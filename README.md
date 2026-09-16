@@ -2,7 +2,7 @@
 
 An AI-powered healthcare assistant designed to help patients manage appointments, retrieve healthcare information, and handle routine healthcare-related queries through a conversational interface.
 
-The platform combines **FastAPI, PostgreSQL, Redis, LangChain, LangGraph, LLMs, and Retrieval-Augmented Generation (RAG)** to provide an intelligent and scalable backend.
+The platform combines **FastAPI, SQLite, SQLModel, Redis, LangChain, LangGraph, LLMs, and Retrieval-Augmented Generation (RAG)** to provide an intelligent and scalable healthcare assistance system.
 
 ## 🚀 Features
 
@@ -14,8 +14,8 @@ The platform combines **FastAPI, PostgreSQL, Redis, LangChain, LangGraph, LLMs, 
 - AI-powered conversational assistance
 - Healthcare information retrieval using RAG
 - Context-aware responses using LLMs
-- Conversation workflow orchestration with LangGraph
-- PostgreSQL for persistent data storage
+- AI workflow orchestration with LangGraph
+- SQLite database for persistent data storage
 - Redis for caching and temporary state
 - REST APIs using FastAPI
 - Human-assistance routing for requests requiring staff intervention
@@ -25,7 +25,7 @@ The platform combines **FastAPI, PostgreSQL, Redis, LangChain, LangGraph, LLMs, 
 ```text
                     ┌──────────────────────┐
                     │     Web Dashboard    │
-                    │   / User Interface   │
+                    │    User Interface    │
                     └──────────┬───────────┘
                                │
                                │ REST API
@@ -39,7 +39,7 @@ The platform combines **FastAPI, PostgreSQL, Redis, LangChain, LangGraph, LLMs, 
               │                │                │
               ▼                ▼                ▼
        ┌─────────────┐  ┌─────────────┐  ┌──────────────┐
-       │ PostgreSQL  │  │    Redis    │  │ AI Agent     │
+       │   SQLite   │  │    Redis    │  │  AI Agent    │
        │             │  │             │  │  LangGraph   │
        │ Patients    │  │ Cache/State │  │              │
        │ Doctors     │  │             │  │ LangChain    │
