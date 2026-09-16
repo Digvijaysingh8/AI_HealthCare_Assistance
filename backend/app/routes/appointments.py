@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends,HTTPException
 from sqlmodel import Session, select
+from datetime import date 
 
 from app.models.appointment import Appointment
 from app.database.session import get_session
 from app.schemas.appointment import AppointmentCreate , AppointmentUpdate
 from app.models.patient import Patient
 from app.models.doctor import Doctor
+
+
 
 
 
@@ -34,12 +37,19 @@ def create_appointment(
         status_code=404,
         detail="Doctor not found"
     )
+    appointment_date = appointment.appointment_date
+
+    if appointment_date < date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="Appointment date cannot be in the past"
+        )
 
     new_appointment = Appointment(
         patient_id=appointment.patient_id,
         doctor_id=appointment.doctor_id,
-        appointment_date=appointment.appointment_date,
-        appointment_time=appointment.appointment_time
+        appointment_date=appointment.appointment_date.isoformat(),
+        appointment_time=appointment.appointment_time.strftime("%H:%M")
     )
 
     session.add(new_appointment)
@@ -98,11 +108,20 @@ def update_appointment(
             status_code=404,
             detail="Doctor not found"
         )
+    appointment_date = updated_appointment.appointment_date
+
+    if appointment_date < date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="Appointment date cannot be in the past"
+        )
+
+ 
 
     appointment.patient_id = updated_appointment.patient_id
     appointment.doctor_id = updated_appointment.doctor_id
-    appointment.appointment_date = updated_appointment.appointment_date
-    appointment.appointment_time = updated_appointment.appointment_time
+    appointment.appointment_date = updated_appointment.appointment_date.isoformat()
+    appointment.appointment_time = updated_appointment.appointment_time.strftime("%H:%M")
 
     session.add(appointment)
     session.commit()
@@ -119,7 +138,10 @@ def delete_appointment(
     appointment = session.get(Appointment, appointment_id)
 
     if not appointment:
-        return {"message": "Appointment not found"}
+        raise HTTPException(
+            status_code=404,
+            detail="Appointment not found"
+        )
 
     session.delete(appointment)
     session.commit()
