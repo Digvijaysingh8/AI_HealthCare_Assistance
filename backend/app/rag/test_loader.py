@@ -1,7 +1,7 @@
 from app.rag.retriever import retrieve_chunks
 
 
-question = "What are common symptoms of diabetes?"
+question = "What are common symptoms of Asthma?"
 
 results = retrieve_chunks(question)
 
