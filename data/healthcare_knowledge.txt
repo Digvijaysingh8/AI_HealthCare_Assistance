@@ -23,3 +23,23 @@ The common cold is a viral infection that commonly affects the nose and throat.
 Common symptoms include a runny nose, sore throat, coughing, sneezing, and mild fatigue.
 
 Most common colds improve with time, but people with severe, persistent, or concerning symptoms should seek medical advice.
+
+
+
+Dengue
+
+Dengue is a viral infection transmitted by infected mosquitoes.
+
+Common symptoms may include high fever, headache, muscle and joint pain, nausea, vomiting, and rash.
+
+People with suspected dengue should seek medical evaluation for proper assessment and care.
+
+
+
+Asthma
+
+Asthma is a condition that affects the airways and can make breathing difficult.
+
+Common symptoms may include wheezing, coughing, shortness of breath, and chest tightness.
+
+People with breathing difficulties or persistent symptoms should consult a qualified healthcare professional for proper evaluation.

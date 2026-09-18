@@ -1,0 +1,512 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f7fb;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.header {
+  background: #2563eb;
+  color: white;
+  text-align: center;
+  padding: 35px 20px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.header p {
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+.chat-container {
+  width: 90%;
+  max-width: 800px;
+  margin: 50px auto;
+  background: white;
+  padding: 35px;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.welcome-message {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.welcome-message h2 {
+  margin-bottom: 10px;
+  font-size: 25px;
+  color: #111827;
+}
+
+.welcome-message p {
+  color: #666;
+  line-height: 1.6;
+}
+
+.input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+textarea {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 16px;
+  resize: vertical;
+  outline: none;
+}
+
+textarea:focus {
+  border-color: #2563eb;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+.answer-area {
+  margin-top: 25px;
+  padding: 20px;
+  background: #f8fafc;
+  border-left: 5px solid #2563eb;
+  border-radius: 10px;
+}
+
+.answer-area h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #2563eb;
+}
+
+.answer-area p {
+  margin: 0;
+  white-space: pre-line;
+  line-height: 1.7;
+  color: #333;
+}
+
+button:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+.clear-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.clear-button {
+  width: auto;
+  padding: 8px 18px;
+  background: #facc15;
+  color: #333;
+  font-size: 14px;
+  border-radius: 7px;
+}
+
+.clear-button:hover {
+  background: #eab308;
+}
+
+.suggestions {
+  margin-bottom: 20px;
+}
+
+.suggestions p {
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #555;
+}
+
+.suggestion-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.suggestion-buttons button {
+  width: auto;
+  padding: 9px 14px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.suggestion-buttons button:hover {
+  background: #dbeafe;
+}
+
+.navbar {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.navbar a {
+  flex: 1;
+  text-decoration: none;
+}
+
+.navbar button {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  font-size: 15px;
+}
+
+.navbar button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.page {
+  width: 90%;
+  max-width: 1000px;
+  margin: 50px auto;
+  background: white;
+  padding: 35px;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.page h2 {
+  color: #2563eb;
+  margin-top: 0;
+}
+.patient-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.patient-card {
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.patient-card h3 {
+  margin-top: 0;
+  color: #2563eb;
+}
+
+.patient-card p {
+  margin: 8px 0;
+  color: #444;
+}
+.patient-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  margin-top: 25px;
+  margin-bottom: 30px;
+}
+
+.patient-form input,
+.patient-form select {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.patient-form button {
+  width: auto;
+  padding: 12px 20px;
+}
+.edit-button,
+.delete-button {
+  width: auto;
+  padding: 8px 15px;
+  margin-top: 10px;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.delete-button {
+  background: #ef4444;
+}
+
+.delete-button:hover {
+  background: #dc2626;
+}
+.doctor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.doctor-actions button {
+  width: auto;
+  padding: 8px 15px;
+  font-size: 14px;
+}
+
+.cancel-button {
+  width: auto !important;
+  padding: 12px 20px;
+  background: #e5e7eb;
+  color: #333;
+}
+
+.cancel-button:hover {
+  background: #d1d5db;
+}
+/* ================================
+   APPOINTMENT PAGE
+================================ */
+
+.appointment-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 30px;
+  padding: 25px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+
+/* Form group */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+.form-group label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #374151;
+}
+
+
+/* Inputs and dropdowns */
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  background: white;
+  outline: none;
+}
+
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #2563eb;
+}
+
+
+/* Book appointment button */
+
+.appointment-form > button {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 13px;
+  margin-top: 5px;
+}
+
+
+/* Appointment section */
+
+.appointment-section {
+  margin-top: 40px;
+}
+
+
+.appointment-section h2 {
+  color: #2563eb;
+  margin-bottom: 20px;
+}
+
+
+/* Appointment cards */
+
+.appointment-list {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(280px, 1fr)
+  );
+  gap: 20px;
+}
+
+
+.appointment-card {
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: transform 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+
+.appointment-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+
+.appointment-card h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #2563eb;
+  font-size: 19px;
+}
+
+
+.appointment-card p {
+  margin: 9px 0;
+  color: #444;
+  line-height: 1.5;
+}
+
+
+/* Mobile responsive */
+
+@media (max-width: 700px) {
+
+  .appointment-form {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-form > button {
+    grid-column: auto;
+  }
+
+}
+.form-group select {
+  color: #111827;
+  background-color: white;
+}
+
+.form-group select option {
+  color: #111827;
+  background-color: white;
+}
+
+/* Appointment section headings */
+
+.appointment-section-title {
+  grid-column: 1 / -1;
+  margin-top: 5px;
+  margin-bottom: -5px;
+}
+
+
+.appointment-section-title h3 {
+  margin: 0;
+  color: #2563eb;
+  font-size: 18px;
+}
+
+
+/* New patient button */
+
+.new-patient-container {
+  display: flex;
+  align-items: flex-end;
+}
+
+
+.new-patient-button {
+  width: auto !important;
+  padding: 10px 16px !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  border: 1px solid #bfdbfe !important;
+  font-size: 14px !important;
+}
+
+
+.new-patient-button:hover {
+  background: #dbeafe !important;
+}
+
+
+/* Make dropdown text visible */
+
+.form-group select {
+  color: #111827;
+  background-color: white;
+}
+
+
+.form-group select option {
+  color: #111827;
+  background-color: white;
+}
+
+
+/* Better input text visibility */
+
+.form-group input {
+  color: #111827;
+  background-color: white;
+}
+.date-input-container {
+  position: relative;
+}
+
+.date-input-container input[type="date"] {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #111827;
+  background: white;
+  cursor: pointer;
+}
+
+.date-input-container input[type="date"]:focus {
+  border-color: #2563eb;
+  outline: none;
+}
+
+/* Make the calendar icon clickable-looking */
+
+.date-input-container input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 4px;
+}
