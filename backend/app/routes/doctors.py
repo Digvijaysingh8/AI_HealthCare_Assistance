@@ -5,7 +5,8 @@ from app.models.doctor import Doctor
 from app.database.session import get_session
 from app.schemas.doctor import DoctorCreate , DoctorUpdate
 
-
+from app.auth.dependencies import require_role
+from app.models.user import User
 router = APIRouter(
     prefix="/doctors",
     tags=["Doctors"]
@@ -30,7 +31,17 @@ def get_doctors(
     return doctor_service.get_doctors(
         session
     )
-
+@router.get("/my-patients")
+def get_my_patients(
+    current_user: User = Depends(
+        require_role(["doctor"])
+    ),
+    session: Session = Depends(get_session)
+):
+    return doctor_service.get_my_patients(
+        current_user.id,
+        session
+    )
 
 @router.get("/{doctor_id}")
 def get_doctor(
@@ -55,13 +66,15 @@ def update_doctor(
         session
     )
 
-
 @router.delete("/{doctor_id}")
 def delete_doctor(
     doctor_id: int,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
-   return doctor_service.delete_doctor(
+    return doctor_service.delete_doctor(
         doctor_id,
         session
     )

@@ -3,7 +3,8 @@ from sqlmodel import Session, select
 
 from app.models.doctor import Doctor
 from app.schemas.doctor import DoctorCreate, DoctorUpdate
-
+from app.models.patient import Patient
+from app.models.appointment import Appointment
 
 def create_doctor(
     doctor: DoctorCreate,
@@ -87,3 +88,35 @@ def delete_doctor(
     return {
         "message": "Doctor deleted successfully"
     }
+
+def get_my_patients(
+    user_id: int,
+    session: Session
+):
+    doctor = session.exec(
+        select(Doctor).where(
+            Doctor.user_id == user_id
+        )
+    ).first()
+
+    if not doctor:
+        raise HTTPException(
+            status_code=404,
+            detail="Doctor profile not found"
+        )
+
+    statement = (
+        select(Patient)
+        .join(
+            Appointment,
+            Appointment.patient_id == Patient.id
+        )
+        .where(
+            Appointment.doctor_id == doctor.id
+        )
+        .distinct()
+    )
+
+    patients = session.exec(statement).all()
+
+    return patients
