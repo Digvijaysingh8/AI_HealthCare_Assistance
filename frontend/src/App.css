@@ -510,3 +510,99 @@ button:disabled {
   cursor: pointer;
   padding: 4px;
 }
+.time-slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.time-slot {
+  padding: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.time-slot:hover {
+  background: #dbeafe;
+}
+
+.time-slot.selected {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+@media (max-width: 700px) {
+  .time-slots {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.appointment-date-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #111827;
+  background: white;
+  cursor: pointer;
+}
+
+.appointment-date-input:focus {
+  border-color: #2563eb;
+  outline: none;
+}
+
+.appointment-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+}
+.appointment-date-picker {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #111827;
+  background: white;
+  outline: none;
+  cursor: pointer;
+}
+
+.appointment-date-picker:focus {
+  border-color: #2563eb;
+}
+
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker__input-container {
+  width: 100%;
+}
+.time-slot.booked {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  cursor: not-allowed;
+  text-decoration: line-through;
+  opacity: 0.8;
+  position: relative;
+}
+
+.time-slot.booked:hover {
+  background: #fee2e2;
+}
+
+.booked-mark {
+  margin-left: 5px;
+  font-weight: bold;
+  color: #dc2626;
+}

@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import DatePicker from "react-datepicker";
+
+import "react-datepicker/dist/react-datepicker.css";
 
 
 function Appointments() {
-
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -23,45 +27,67 @@ function Appointments() {
   const [booking, setBooking] = useState(false);
 
 
-  const fetchData = async () => {
+ const fetchData = async () => {
 
-    try {
+  setLoading(true);
 
-      const patientsResponse = await fetch(
-        "http://127.0.0.1:8000/patients/"
-      );
+  try {
 
-      const doctorsResponse = await fetch(
-        "http://127.0.0.1:8000/doctors/"
-      );
+    const patientsResponse = await fetch(
+      "http://127.0.0.1:8000/patients/"
+    );
 
-      const appointmentsResponse = await fetch(
-        "http://127.0.0.1:8000/appointments/"
-      );
-
-
-      const patientsData = await patientsResponse.json();
-      const doctorsData = await doctorsResponse.json();
-      const appointmentsData = await appointmentsResponse.json();
-
-
-      setPatients(patientsData);
-      setDoctors(doctorsData);
-      setAppointments(appointmentsData);
-
-
-    } catch (error) {
-
-      console.error(
-        "Error fetching appointment data:",
-        error
-      );
-
+    if (!patientsResponse.ok) {
+      throw new Error("Failed to fetch patients");
     }
 
+    const patientsData =
+      await patientsResponse.json();
+
+    setPatients(patientsData);
+
+
+    const doctorsResponse = await fetch(
+      "http://127.0.0.1:8000/doctors/"
+    );
+
+    if (!doctorsResponse.ok) {
+      throw new Error("Failed to fetch doctors");
+    }
+
+    const doctorsData =
+      await doctorsResponse.json();
+
+    setDoctors(doctorsData);
+
+
+    const appointmentsResponse = await fetch(
+      "http://127.0.0.1:8000/appointments/"
+    );
+
+    if (!appointmentsResponse.ok) {
+      throw new Error("Failed to fetch appointments");
+    }
+
+    const appointmentsData =
+      await appointmentsResponse.json();
+
+    setAppointments(appointmentsData);
+
+
+  } catch (error) {
+
+    console.error(
+      "Error fetching appointment data:",
+      error
+    );
+
+  } finally {
 
     setLoading(false);
-  };
+
+  }
+};
 
 
   useEffect(() => {
@@ -69,7 +95,51 @@ function Appointments() {
     fetchData();
 
   }, []);
+  useEffect(() => {
 
+  fetchAvailableSlots();
+
+  }, [doctorId, appointmentDate]);
+
+  const fetchAvailableSlots = async () => {
+
+  if (!doctorId || !appointmentDate) {
+    setAvailableSlots([]);
+    return;
+  }
+
+  setLoadingSlots(true);
+
+  try {
+
+    const response = await fetch(
+      `http://127.0.0.1:8000/appointments/available-slots/${doctorId}?appointment_date=${appointmentDate}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Failed to fetch available slots"
+      );
+    }
+
+    setAvailableSlots(data);
+    setAppointmentTime("");
+
+  } catch (error) {
+
+    console.error(
+      "Error fetching available slots:",
+      error
+    );
+
+    setAvailableSlots([]);
+
+  }
+
+  setLoadingSlots(false);
+  };
 
   const resetForm = () => {
 
@@ -439,43 +509,106 @@ function Appointments() {
         </div>
 
 
-        <div className="form-group">
+<div className="form-group">
+  <label>Appointment Date</label>
 
-        <label>
-            Appointment Date
-        </label>
+  <DatePicker
+    selected={
+      appointmentDate
+        ? new Date(appointmentDate + "T00:00:00")
+        : null
+    }
+    onChange={(date) => {
 
-        <div className="date-input-container">
+      if (!date) {
+        setAppointmentDate("");
+        return;
+      }
 
-            <input
-            type="date"
-            value={appointmentDate}
-            min={new Date().toISOString().split("T")[0]}
-            onChange={(e) =>
-                setAppointmentDate(e.target.value)
-            }
-            />
+      const year = date.getFullYear();
+
+      const month = String(
+        date.getMonth() + 1
+      ).padStart(2, "0");
+
+      const day = String(
+        date.getDate()
+      ).padStart(2, "0");
+
+      setAppointmentDate(
+        `${year}-${month}-${day}`
+      );
+    }}
+    minDate={new Date()}
+    dateFormat="dd-MM-yyyy"
+    placeholderText="Select appointment date"
+    className="appointment-date-picker"
+  />
+</div>
+
+
+
+
+<div className="form-group">
+  <label>Appointment Time</label>
+
+  {!doctorId || !appointmentDate ? (
+
+    <p>
+      Please select a doctor and date first.
+    </p>
+
+  ) : loadingSlots ? (
+
+    <p>
+      Loading available slots...
+    </p>
+
+  ) : availableSlots.length === 0 ? (
+
+    <p>
+      No available slots for this date.
+    </p>
+
+  ) : (
+
+    <div className="time-slots">
+
+      {availableSlots.map((slot) => (
+
+  <button
+    type="button"
+    key={slot.time}
+    disabled={!slot.available}
+    className={
+      !slot.available
+        ? "time-slot booked"
+        : appointmentTime === slot.time
+          ? "time-slot selected"
+          : "time-slot"
+    }
+    onClick={() => {
+
+      if (slot.available) {
+        setAppointmentTime(slot.time);
+      }
+
+    }}
+  >
+    {slot.time}
+
+    {!slot.available && (
+      <span className="booked-mark">✕</span>
+    )}
+
+  </button>
+
+))}
 
         </div>
 
-        </div>
-
-
-        <div className="form-group">
-
-          <label>
-            Appointment Time
-          </label>
-
-          <input
-            type="time"
-            value={appointmentTime}
-            onChange={(e) =>
-              setAppointmentTime(e.target.value)
-            }
-          />
-
-        </div>
+      )}
+    </div>
 
 
         <button
