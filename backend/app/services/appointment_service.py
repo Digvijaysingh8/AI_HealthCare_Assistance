@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from sqlmodel import Session, select
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from app.models.appointment import Appointment
 from app.models.patient import Patient
@@ -11,7 +11,74 @@ from app.schemas.appointment import (
     AppointmentUpdate,
     AppointmentResponse
 )
+def generate_time_slots():
+    slots = []
 
+    current_time = datetime.strptime(
+        "10:00",
+        "%H:%M"
+    )
+
+    end_time = datetime.strptime(
+        "20:00",
+        "%H:%M"
+    )
+
+    while current_time < end_time:
+
+        slots.append(
+            current_time.strftime("%H:%M")
+        )
+
+        current_time += timedelta(minutes=30)
+
+    return slots
+def get_available_slots(
+    doctor_id: int,
+    appointment_date: date,
+    session: Session
+):
+    doctor = session.get(Doctor, doctor_id)
+
+    if not doctor:
+        raise HTTPException(
+            status_code=404,
+            detail="Doctor not found"
+        )
+
+    all_slots = generate_time_slots()
+
+    existing_appointments = session.exec(
+        select(Appointment).where(
+            Appointment.doctor_id == doctor_id,
+            Appointment.appointment_date == appointment_date.isoformat()
+        )
+    ).all()
+
+    booked_slots = {
+        appointment.appointment_time
+        for appointment in existing_appointments
+    }
+    current_time = datetime.now().strftime("%H:%M")
+    today = date.today().isoformat()
+
+    slots = []
+
+    for slot in all_slots:
+
+        is_booked = slot in booked_slots
+
+        is_past = (
+            appointment_date.isoformat() == today
+            and slot <= current_time
+        )
+
+        slots.append({
+            "time": slot,
+            "available": not is_booked and not is_past
+        })
+
+    return slots
 
 def create_appointment(
     appointment: AppointmentCreate,
@@ -292,3 +359,25 @@ def get_doctor_appointments(
         })
 
     return response
+
+def get_my_patient_appointments(
+    user_id: int,
+    session: Session
+):
+    patient = session.exec(
+        select(Patient).where(
+            Patient.user_id == user_id
+        )
+    ).first()
+
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="Patient profile not found"
+        )
+
+    return get_patient_appointments(
+        patient.id,
+        session
+    )
+

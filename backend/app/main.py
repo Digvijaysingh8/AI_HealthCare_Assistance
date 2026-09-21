@@ -7,6 +7,7 @@ from app.routes.doctors import router as doctor_router
 from app.routes.departments import router as department_router
 from app.routes.appointments import router as appointment_router
 from app.routes import ai
+from app.routes import auth
 
 
 app = FastAPI(
@@ -33,6 +34,7 @@ app.include_router(doctor_router)
 app.include_router(department_router)
 app.include_router(appointment_router)
 app.include_router(ai.router)
+app.include_router(auth.router)
 
 
 @app.on_event("startup")

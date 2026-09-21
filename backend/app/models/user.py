@@ -3,18 +3,18 @@ from typing import Optional
 from sqlmodel import SQLModel, Field
 
 
-class Doctor(SQLModel, table=True):
+class User(SQLModel, table=True):
 
     id: Optional[int] = Field(
         default=None,
         primary_key=True
     )
 
-    user_id: Optional[int] = Field(
-        default=None,
+    email: str = Field(
+        unique=True,
         index=True
     )
 
-    name: str
+    password_hash: str
 
-    specialization: str
+    role: str

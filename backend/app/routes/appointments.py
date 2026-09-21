@@ -7,9 +7,11 @@ from app.schemas.appointment import (
     AppointmentUpdate,
     AppointmentResponse
 )
+from app.auth.dependencies import get_current_user
+from app.models.user import User
 
 from app.services import appointment_service
-
+from datetime import date
 
 router = APIRouter(
     prefix="/appointments",
@@ -57,7 +59,27 @@ def get_doctor_appointments(
         doctor_id,
         session
     )
+@router.get("/available-slots/{doctor_id}")
+def get_available_slots(
+    doctor_id: int,
+    appointment_date: date,
+    session: Session = Depends(get_session)
+):
+    return appointment_service.get_available_slots(
+        doctor_id,
+        appointment_date,
+        session
+    )
 
+@router.get("/my", response_model=list[AppointmentResponse])
+def get_my_appointments(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    return appointment_service.get_my_patient_appointments(
+        current_user.id,
+        session
+    )
 
 @router.get("/{appointment_id}", response_model=AppointmentResponse)
 def get_appointment(
