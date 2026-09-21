@@ -65,7 +65,7 @@ def register_user(
 
         doctor = Doctor(
             user_id=new_user.id,
-            name=user_data.email.split("@")[0],
+            name="Dr." + user_data.email.split("@")[0],
             specialization="Not specified"
         )
 

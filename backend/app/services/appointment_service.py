@@ -380,4 +380,23 @@ def get_my_patient_appointments(
         patient.id,
         session
     )
+def get_my_doctor_appointments(
+    user_id: int,
+    session: Session
+):
+    doctor = session.exec(
+        select(Doctor).where(
+            Doctor.user_id == user_id
+        )
+    ).first()
 
+    if not doctor:
+        raise HTTPException(
+            status_code=404,
+            detail="Doctor profile not found"
+        )
+
+    return get_doctor_appointments(
+        doctor.id,
+        session
+    )
