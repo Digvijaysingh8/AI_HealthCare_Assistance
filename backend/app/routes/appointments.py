@@ -79,13 +79,13 @@ def get_available_slots(
     )
 
 @router.get("/my", response_model=list[AppointmentResponse])
-def get_my_appointments(
+def get_my_patient_appointments (
     current_user: User = Depends(
         require_role(["patient"])
     ),
     session: Session = Depends(get_session)
 ):
-    return appointment_service.get_my_appointments(
+    return appointment_service.get_my_patient_appointments(
         current_user.id,
         session
     )

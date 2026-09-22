@@ -51,15 +51,15 @@ def register_user(
 
     # Create profile based on role
     if user_data.role == "patient":
-
         patient = Patient(
             user_id=new_user.id,
-            name=user_data.email.split("@")[0],
-            age=0,
-            gender="Not specified"
+            name=user_data.name,
+            age=user_data.age,
+            gender=user_data.gender
         )
-
         session.add(patient)
+
+     
 
     elif user_data.role == "doctor":
 

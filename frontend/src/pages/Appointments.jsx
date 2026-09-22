@@ -1,269 +1,471 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import DatePicker from "react-datepicker";
 
 import "react-datepicker/dist/react-datepicker.css";
 
-
 function Appointments() {
+  const location = useLocation();
+  useEffect(() => {
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: "instant"
+  });
+}, []);
+
+  /*
+    Doctor selected from the Doctors page.
+
+    Example:
+    Doctors page
+       ↓
+    Dr. Vijay
+       ↓
+    Book Appointment
+       ↓
+    doctorId is passed here
+  */
+
+  const selectedDoctorFromCard =
+    location.state?.doctorId || "";
+
+  const selectedDoctorNameFromCard =
+    location.state?.doctorName || "";
+
+  const userRole = localStorage.getItem("user_role");
+
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
+
+  /*
+    If we came from a doctor card,
+    automatically select that doctor.
+  */
+
+  const [doctorId, setDoctorId] = useState(
+    selectedDoctorFromCard
+  );
+
   const [appointments, setAppointments] = useState([]);
 
   const [patientId, setPatientId] = useState("");
-  const [doctorId, setDoctorId] = useState("");
+  const [currentPatient, setCurrentPatient] = useState(null);
 
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
-
-  const [newPatient, setNewPatient] = useState(false);
-
-  const [patientName, setPatientName] = useState("");
-  const [patientAge, setPatientAge] = useState("");
-  const [patientGender, setPatientGender] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
 
 
- const fetchData = async () => {
+  /*
+    ============================================================
+    FETCH PATIENTS, DOCTORS AND APPOINTMENTS
+    ============================================================
+  */
 
-  setLoading(true);
+  const fetchData = async () => {
+    setLoading(true);
 
-  try {
+    try {
+      const token =
+        localStorage.getItem("access_token");
 
-    const patientsResponse = await fetch(
-      "http://127.0.0.1:8000/patients/"
-    );
+      /*
+        1. Get logged-in user
+      */
 
-    if (!patientsResponse.ok) {
-      throw new Error("Failed to fetch patients");
+      const userResponse = await fetch(
+        "http://127.0.0.1:8000/auth/me",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!userResponse.ok) {
+        throw new Error(
+          "Failed to fetch logged-in user"
+        );
+      }
+
+      const userData =
+        await userResponse.json();
+
+
+      /*
+        2. Get patients
+      */
+
+      const patientsResponse = await fetch(
+        "http://127.0.0.1:8000/patients/"
+      );
+
+      if (!patientsResponse.ok) {
+        throw new Error(
+          "Failed to fetch patients"
+        );
+      }
+
+      const patientsData =
+        await patientsResponse.json();
+
+      setPatients(patientsData);
+
+
+      /*
+        3. Find logged-in patient
+      */
+
+      if (userData.role === "patient") {
+
+        const loggedInPatient =
+          patientsData.find(
+            (patient) =>
+              patient.user_id === userData.id
+          );
+
+        if (!loggedInPatient) {
+          throw new Error(
+            "Patient profile not found"
+          );
+        }
+
+        setCurrentPatient(
+          loggedInPatient
+        );
+
+        setPatientId(
+          loggedInPatient.id
+        );
+      }
+
+
+      /*
+        4. Get doctors
+      */
+
+      const doctorsResponse = await fetch(
+        "http://127.0.0.1:8000/doctors/"
+      );
+
+      if (!doctorsResponse.ok) {
+        throw new Error(
+          "Failed to fetch doctors"
+        );
+      }
+
+      const doctorsData =
+        await doctorsResponse.json();
+
+      setDoctors(doctorsData);
+
+
+      /*
+        IMPORTANT:
+        If doctor was selected from
+        Doctors page, keep that doctor selected.
+      */
+
+      if (selectedDoctorFromCard) {
+
+        const doctorExists =
+          doctorsData.some(
+            (doctor) =>
+              String(doctor.id) ===
+              String(selectedDoctorFromCard)
+          );
+
+        if (doctorExists) {
+          setDoctorId(
+            String(selectedDoctorFromCard)
+          );
+        }
+      }
+
+
+      /*
+        5. Get appointments
+
+        Patient:
+        /appointments/my
+
+        Admin:
+        /appointments/
+      */
+
+      const appointmentsUrl =
+        userData.role === "patient"
+          ? "http://127.0.0.1:8000/appointments/my"
+          : "http://127.0.0.1:8000/appointments/";
+
+      const appointmentsResponse =
+        await fetch(
+          appointmentsUrl,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`
+            }
+          }
+        );
+
+      if (!appointmentsResponse.ok) {
+        throw new Error(
+          "Failed to fetch appointments"
+        );
+      }
+
+      const appointmentsData =
+        await appointmentsResponse.json();
+
+      setAppointments(
+        appointmentsData
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Error fetching appointment data:",
+        error
+      );
+
+      alert(error.message);
+
+    } finally {
+
+      setLoading(false);
+
     }
-
-    const patientsData =
-      await patientsResponse.json();
-
-    setPatients(patientsData);
-
-
-    const doctorsResponse = await fetch(
-      "http://127.0.0.1:8000/doctors/"
-    );
-
-    if (!doctorsResponse.ok) {
-      throw new Error("Failed to fetch doctors");
-    }
-
-    const doctorsData =
-      await doctorsResponse.json();
-
-    setDoctors(doctorsData);
-
-
-    const appointmentsResponse = await fetch(
-      "http://127.0.0.1:8000/appointments/"
-    );
-
-    if (!appointmentsResponse.ok) {
-      throw new Error("Failed to fetch appointments");
-    }
-
-    const appointmentsData =
-      await appointmentsResponse.json();
-
-    setAppointments(appointmentsData);
-
-
-  } catch (error) {
-
-    console.error(
-      "Error fetching appointment data:",
-      error
-    );
-
-  } finally {
-
-    setLoading(false);
-
-  }
-};
+  };
 
 
   useEffect(() => {
-
     fetchData();
-
   }, []);
+
+
+  /*
+    ============================================================
+    FETCH AVAILABLE SLOTS
+    ============================================================
+  */
+
   useEffect(() => {
 
-  fetchAvailableSlots();
+    fetchAvailableSlots();
 
   }, [doctorId, appointmentDate]);
 
+
   const fetchAvailableSlots = async () => {
 
-  if (!doctorId || !appointmentDate) {
-    setAvailableSlots([]);
-    return;
-  }
+    if (!doctorId || !appointmentDate) {
 
-  setLoadingSlots(true);
+      setAvailableSlots([]);
 
-  try {
-
-    const response = await fetch(
-      `http://127.0.0.1:8000/appointments/available-slots/${doctorId}?appointment_date=${appointmentDate}`
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.detail || "Failed to fetch available slots"
-      );
+      return;
     }
 
-    setAvailableSlots(data);
-    setAppointmentTime("");
+    setLoadingSlots(true);
 
-  } catch (error) {
+    try {
 
-    console.error(
-      "Error fetching available slots:",
-      error
-    );
+      const response = await fetch(
+        `http://127.0.0.1:8000/appointments/available-slots/${doctorId}?appointment_date=${appointmentDate}`
+      );
 
-    setAvailableSlots([]);
+      const data =
+        await response.json();
 
-  }
+      if (!response.ok) {
 
-  setLoadingSlots(false);
+        throw new Error(
+          data.detail ||
+          "Failed to fetch available slots"
+        );
+
+      }
+
+      setAvailableSlots(data);
+
+      setAppointmentTime("");
+
+    } catch (error) {
+
+      console.error(
+        "Error fetching available slots:",
+        error
+      );
+
+      setAvailableSlots([]);
+
+    } finally {
+
+      setLoadingSlots(false);
+
+    }
   };
+
+
+  /*
+    ============================================================
+    RESET APPOINTMENT FORM
+    ============================================================
+  */
 
   const resetForm = () => {
 
-    setPatientId("");
-    setDoctorId("");
+    /*
+      If the patient came from a doctor card,
+      keep that doctor selected.
+
+      Otherwise clear doctor selection.
+    */
+
+    if (selectedDoctorFromCard) {
+
+      setDoctorId(
+        String(selectedDoctorFromCard)
+      );
+
+    } else {
+
+      setDoctorId("");
+
+    }
+
     setAppointmentDate("");
     setAppointmentTime("");
 
-    setNewPatient(false);
 
-    setPatientName("");
-    setPatientAge("");
-    setPatientGender("");
+    /*
+      Keep logged-in patient's own ID.
+    */
+
+    if (
+      userRole === "patient" &&
+      currentPatient
+    ) {
+
+      setPatientId(
+        currentPatient.id
+      );
+
+    } else {
+
+      setPatientId("");
+
+    }
   };
 
+
+  /*
+    ============================================================
+    BOOK APPOINTMENT
+    ============================================================
+  */
 
   const bookAppointment = async (e) => {
 
     e.preventDefault();
-
 
     if (
       !doctorId ||
       !appointmentDate ||
       !appointmentTime
     ) {
-      alert("Please fill all appointment details.");
+
+      alert(
+        "Please fill all appointment details."
+      );
+
       return;
     }
 
 
-    if (newPatient) {
+    /*
+      Patient must have own profile.
+    */
 
-      if (
-        !patientName.trim() ||
-        !patientAge ||
-        !patientGender
-      ) {
-        alert("Please fill all patient information.");
-        return;
-      }
+    if (
+      userRole === "patient" &&
+      !currentPatient
+    ) {
 
-    } else {
+      alert(
+        "Patient profile not found."
+      );
 
-      if (!patientId) {
-        alert("Please select a patient.");
-        return;
-      }
-
+      return;
     }
 
 
     setBooking(true);
 
-
     try {
 
-      let selectedPatientId = patientId;
+      const token =
+        localStorage.getItem(
+          "access_token"
+        );
 
 
       /*
-        If user is adding a new patient,
-        create the patient first.
+        Patients ALWAYS use their
+        own patient ID.
       */
 
-      if (newPatient) {
+      const selectedPatientId =
+        userRole === "patient"
+          ? currentPatient.id
+          : patientId;
 
-        const patientResponse = await fetch(
-          "http://127.0.0.1:8000/patients/",
+
+      if (!selectedPatientId) {
+
+        alert(
+          "Please select a patient."
+        );
+
+        return;
+      }
+
+
+      const appointmentResponse =
+        await fetch(
+          "http://127.0.0.1:8000/appointments/",
           {
             method: "POST",
 
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${token}`
             },
 
             body: JSON.stringify({
-              name: patientName,
-              age: Number(patientAge),
-              gender: patientGender
+              patient_id:
+                Number(selectedPatientId),
+
+              doctor_id:
+                Number(doctorId),
+
+              appointment_date:
+                appointmentDate,
+
+              appointment_time:
+                appointmentTime
             })
           }
         );
-
-
-        const patientData =
-          await patientResponse.json();
-
-
-        if (!patientResponse.ok) {
-
-          throw new Error(
-            patientData.detail ||
-            "Failed to create patient"
-          );
-
-        }
-
-
-        selectedPatientId = patientData.id;
-      }
-
-
-      /*
-        Now create the appointment.
-      */
-
-      const appointmentResponse = await fetch(
-        "http://127.0.0.1:8000/appointments/",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json"
-          },
-
-          body: JSON.stringify({
-            patient_id: Number(selectedPatientId),
-            doctor_id: Number(doctorId),
-            appointment_date: appointmentDate,
-            appointment_time: appointmentTime
-          })
-        }
-      );
 
 
       const appointmentData =
@@ -289,414 +491,527 @@ function Appointments() {
 
       await fetchData();
 
-
     } catch (error) {
 
       alert(error.message);
 
+    } finally {
+
+      setBooking(false);
+
     }
-
-
-    setBooking(false);
   };
+
+
+  /*
+    ============================================================
+    GET SELECTED DOCTOR
+    ============================================================
+  */
+
+  const selectedDoctor =
+    doctors.find(
+      (doctor) =>
+        String(doctor.id) ===
+        String(doctorId)
+    );
 
 
   return (
 
     <main className="page">
 
-      <h2>Book an Appointment</h2>
+      {/* =====================================================
+          PATIENT BOOKING
+          ===================================================== */}
 
-      <p>
-        Schedule a consultation with one of our available doctors.
-      </p>
+      {userRole === "patient" && (
 
+        <>
 
-      <form
-        className="appointment-form"
-        onSubmit={bookAppointment}
-      >
+          <h2>
+            Book an Appointment
+          </h2>
 
-        {/* PATIENT SECTION */}
-
-        <div className="appointment-section-title">
-
-          <h3>
-            Patient Information
-          </h3>
-
-        </div>
+          <p>
+            Schedule a consultation with
+            one of our available doctors.
+          </p>
 
 
-        <div className="form-group">
-
-          <label>
-            Patient
-          </label>
-
-
-          {!newPatient ? (
-
-            <select
-              value={patientId}
-              onChange={(e) =>
-                setPatientId(e.target.value)
-              }
-            >
-
-              <option value="">
-                Select Patient
-              </option>
-
-              {patients.map((patient) => (
-
-                <option
-                  key={patient.id}
-                  value={patient.id}
-                >
-                  {patient.name}
-                </option>
-
-              ))}
-
-            </select>
-
-          ) : (
-
-            <input
-              type="text"
-              placeholder="Patient name"
-              value={patientName}
-              onChange={(e) =>
-                setPatientName(e.target.value)
-              }
-            />
-
-          )}
-
-        </div>
-
-
-        <div className="new-patient-container">
-
-          <button
-            type="button"
-            className="new-patient-button"
-            onClick={() => {
-
-              setNewPatient(!newPatient);
-
-              setPatientId("");
-
-              setPatientName("");
-              setPatientAge("");
-              setPatientGender("");
-
-            }}
+          <form
+            className="appointment-form"
+            onSubmit={bookAppointment}
           >
 
-            {newPatient
-              ? "← Select Existing Patient"
-              : "+ Add New Patient"
-            }
+            {/* =================================================
+                PATIENT INFORMATION
+                ================================================= */}
 
-          </button>
+            <div className="appointment-section-title">
 
-        </div>
+              <h3>
+                Patient Information
+              </h3>
 
+            </div>
 
-        {newPatient && (
-
-          <>
 
             <div className="form-group">
 
               <label>
-                Age
+                Patient
               </label>
 
               <input
-                type="number"
-                placeholder="Patient age"
-                value={patientAge}
-                onChange={(e) =>
-                  setPatientAge(e.target.value)
+                type="text"
+
+                value={
+                  currentPatient
+                    ? currentPatient.name
+                    : "Loading patient..."
                 }
+
+                readOnly
               />
 
             </div>
 
 
-            <div className="form-group">
+            {/* =================================================
+                APPOINTMENT DETAILS
+                ================================================= */}
 
-              <label>
-                Gender
-              </label>
+            <div className="appointment-section-title">
 
-              <select
-                value={patientGender}
-                onChange={(e) =>
-                  setPatientGender(e.target.value)
-                }
-              >
-
-                <option value="">
-                  Select Gender
-                </option>
-
-                <option value="Male">
-                  Male
-                </option>
-
-                <option value="Female">
-                  Female
-                </option>
-
-                <option value="Other">
-                  Other
-                </option>
-
-              </select>
+              <h3>
+                Appointment Details
+              </h3>
 
             </div>
 
-          </>
 
-        )}
+            {/* =================================================
+                DOCTOR
+                ================================================= */}
 
+            <div className="form-group">
 
-        {/* APPOINTMENT SECTION */}
-
-        <div className="appointment-section-title">
-
-          <h3>
-            Appointment Details
-          </h3>
-
-        </div>
+              <label>
+                Doctor
+              </label>
 
 
-        <div className="form-group">
+              {selectedDoctorFromCard ? (
 
-          <label>
-            Doctor
-          </label>
+                /*
+                  Doctor came from Doctors page.
 
-          <select
-            value={doctorId}
-            onChange={(e) =>
-              setDoctorId(e.target.value)
-            }
-          >
+                  Show it as a read-only field
+                  instead of allowing the patient
+                  to accidentally choose another doctor.
+                */
 
-            <option value="">
-              Select Doctor
-            </option>
+                <input
+                  type="text"
 
-            {doctors.map((doctor) => (
+                  value={
+                    selectedDoctor?.name ||
+                    selectedDoctorNameFromCard ||
+                    "Loading doctor..."
+                  }
 
-              <option
-                key={doctor.id}
-                value={doctor.id}
-              >
-                {doctor.name} - {doctor.specialization}
-              </option>
+                  readOnly
+                />
 
-            ))}
+              ) : (
 
-          </select>
+                /*
+                  Normal booking from navbar.
+                  Patient can choose any doctor.
+                */
 
-        </div>
+                <select
+                  value={doctorId}
+                  onChange={(e) =>
+                    setDoctorId(
+                      e.target.value
+                    )
+                  }
+                >
 
+                  <option value="">
+                    Select Doctor
+                  </option>
 
-<div className="form-group">
-  <label>Appointment Date</label>
+                  {doctors.map(
+                    (doctor) => (
 
-  <DatePicker
-    selected={
-      appointmentDate
-        ? new Date(appointmentDate + "T00:00:00")
-        : null
-    }
-    onChange={(date) => {
+                      <option
+                        key={doctor.id}
+                        value={doctor.id}
+                      >
+                        {doctor.name}
+                      </option>
 
-      if (!date) {
-        setAppointmentDate("");
-        return;
-      }
+                    )
+                  )}
 
-      const year = date.getFullYear();
+                </select>
 
-      const month = String(
-        date.getMonth() + 1
-      ).padStart(2, "0");
+              )}
 
-      const day = String(
-        date.getDate()
-      ).padStart(2, "0");
-
-      setAppointmentDate(
-        `${year}-${month}-${day}`
-      );
-    }}
-    minDate={new Date()}
-    dateFormat="dd-MM-yyyy"
-    placeholderText="Select appointment date"
-    className="appointment-date-picker"
-  />
-</div>
+            </div>
 
 
+            {/* =================================================
+                DATE
+                ================================================= */}
+
+            <div className="form-group">
+
+              <label>
+                Appointment Date
+              </label>
+
+              <DatePicker
+
+                selected={
+                  appointmentDate
+                    ? new Date(
+                        appointmentDate +
+                        "T00:00:00"
+                      )
+                    : null
+                }
+
+                onChange={(date) => {
+
+                  if (!date) {
+
+                    setAppointmentDate("");
+
+                    return;
+                  }
 
 
-<div className="form-group">
-  <label>Appointment Time</label>
+                  const year =
+                    date.getFullYear();
 
-  {!doctorId || !appointmentDate ? (
+                  const month =
+                    String(
+                      date.getMonth() + 1
+                    ).padStart(2, "0");
 
-    <p>
-      Please select a doctor and date first.
-    </p>
+                  const day =
+                    String(
+                      date.getDate()
+                    ).padStart(2, "0");
 
-  ) : loadingSlots ? (
 
-    <p>
-      Loading available slots...
-    </p>
+                  setAppointmentDate(
+                    `${year}-${month}-${day}`
+                  );
 
-  ) : availableSlots.length === 0 ? (
+                }}
 
-    <p>
-      No available slots for this date.
-    </p>
+                minDate={new Date()}
+
+                dateFormat="dd-MM-yyyy"
+
+                placeholderText=
+                  "Select appointment date"
+
+                className=
+                  "appointment-date-picker"
+              />
+
+            </div>
+
+
+            {/* =================================================
+                TIME
+                ================================================= */}
+
+            <div className="form-group">
+
+              <label>
+                Appointment Time
+              </label>
+
+
+              {!doctorId ||
+              !appointmentDate ? (
+
+                <p>
+                  Please select a doctor
+                  and date first.
+                </p>
+
+              ) : loadingSlots ? (
+
+                <p>
+                  Loading available slots...
+                </p>
+
+              ) : availableSlots.length === 0 ? (
+
+                <p>
+                  No available slots
+                  for this date.
+                </p>
+
+              ) : (
+
+                <div className="time-slots">
+
+                  {availableSlots.map(
+                    (slot) => (
+
+                      <button
+                        type="button"
+                        key={slot.time}
+                        disabled={
+                          !slot.available
+                        }
+
+                        className={
+                          !slot.available
+                            ? "time-slot booked"
+                            : appointmentTime ===
+                              slot.time
+                            ? "time-slot selected"
+                            : "time-slot"
+                        }
+
+                        onClick={() => {
+
+                          if (
+                            slot.available
+                          ) {
+
+                            setAppointmentTime(
+                              slot.time
+                            );
+
+                          }
+
+                        }}
+                      >
+
+                        {slot.time}
+
+                        {!slot.available && (
+
+                          <span
+                            className="booked-mark"
+                          >
+                            ✕
+                          </span>
+
+                        )}
+
+                      </button>
+
+                    )
+                  )}
+
+                </div>
+
+              )}
+
+            </div>
+
+
+            {/* =================================================
+                BOOK BUTTON
+                ================================================= */}
+
+            <button
+              type="submit"
+              disabled={
+                booking ||
+                loading
+              }
+            >
+
+              {booking
+                ? "Booking..."
+                : "Book Appointment"}
+
+            </button>
+
+          </form>
+
+        </>
+
+      )}
+
+
+      {/* =====================================================
+          APPOINTMENTS
+          ===================================================== */}
+
+<div className="appointment-section">
+
+  <div className="appointment-header">
+    <div>
+      <span className="appointment-badge">
+        ODASHA • APPOINTMENTS
+      </span>
+
+      <h2>
+        {userRole === "patient"
+          ? "My Appointments"
+          : "Appointments"}
+      </h2>
+
+      <p>
+        Keep track of your scheduled healthcare consultations.
+      </p>
+    </div>
+
+    <div className="appointment-count">
+      <span>{appointments.length}</span>
+      <small>
+        {appointments.length === 1
+          ? "Appointment"
+          : "Appointments"}
+      </small>
+    </div>
+  </div>
+
+
+  {loading ? (
+
+    <div className="appointment-empty">
+      <div className="appointment-loading-icon">
+        ⏳
+      </div>
+
+      <p>Loading your appointments...</p>
+    </div>
+
+  ) : appointments.length === 0 ? (
+
+    <div className="appointment-empty">
+
+      <div className="appointment-empty-icon">
+        📅
+      </div>
+
+      <h3>No appointments yet</h3>
+
+      <p>
+        Your scheduled appointments will appear here.
+      </p>
+
+    </div>
 
   ) : (
 
-    <div className="time-slots">
+    <div className="appointment-list">
 
-      {availableSlots.map((slot) => (
+      {appointments.map((appointment) => (
 
-  <button
-    type="button"
-    key={slot.time}
-    disabled={!slot.available}
-    className={
-      !slot.available
-        ? "time-slot booked"
-        : appointmentTime === slot.time
-          ? "time-slot selected"
-          : "time-slot"
-    }
-    onClick={() => {
-
-      if (slot.available) {
-        setAppointmentTime(slot.time);
-      }
-
-    }}
-  >
-    {slot.time}
-
-    {!slot.available && (
-      <span className="booked-mark">✕</span>
-    )}
-
-  </button>
-
-))}
-
-        </div>
-
-      )}
-    </div>
-
-
-        <button
-          type="submit"
-          disabled={booking || loading}
+        <div
+          className="appointment-card"
+          key={appointment.id}
         >
 
-          {booking
-            ? "Booking..."
-            : "Book Appointment"
-          }
+          <div className="appointment-card-top">
 
-        </button>
+            <div className="appointment-doctor-icon">
+              👨‍⚕️
+            </div>
 
-      </form>
+            <div className="appointment-doctor-info">
 
+              <span className="appointment-label">
+                CONSULTATION WITH
+              </span>
 
-      {/* EXISTING APPOINTMENTS */}
+              <h3>
+                {appointment.doctor_name}
+              </h3>
 
-      <div className="appointment-section">
-
-        <h2>
-          Appointments
-        </h2>
-
-
-        {loading ? (
-
-          <p>
-            Loading appointments...
-          </p>
-
-        ) : appointments.length === 0 ? (
-
-          <p>
-            No appointments found.
-          </p>
-
-        ) : (
-
-          <div className="appointment-list">
-
-            {appointments.map((appointment) => (
-
-              <div
-                className="appointment-card"
-                key={appointment.id}
-              >
-
-                <h3>
-                  {appointment.patient_name}
-                </h3>
-
+              {userRole !== "patient" && (
                 <p>
-                  <strong>
-                    Doctor:
-                  </strong>{" "}
-                  {appointment.doctor_name}
+                  Patient: {appointment.patient_name}
                 </p>
+              )}
 
-                <p>
-                  <strong>
-                    Date:
-                  </strong>{" "}
-                  {appointment.appointment_date}
-                </p>
+            </div>
 
-                <p>
-                  <strong>
-                    Time:
-                  </strong>{" "}
-                  {appointment.appointment_time}
-                </p>
-
-              </div>
-
-            ))}
+            <span className="appointment-status">
+              Upcoming
+            </span>
 
           </div>
 
-        )}
 
-      </div>
+          <div className="appointment-details">
+
+            <div className="appointment-detail">
+
+              <span className="detail-icon">
+                📅
+              </span>
+
+              <div>
+                <small>Date</small>
+
+                <strong>
+                  {appointment.appointment_date}
+                </strong>
+              </div>
+
+            </div>
+
+
+            <div className="appointment-detail">
+
+              <span className="detail-icon">
+                🕐
+              </span>
+
+              <div>
+                <small>Time</small>
+
+                <strong>
+                  {appointment.appointment_time}
+                </strong>
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div className="appointment-card-footer">
+
+            <span>
+              ✓ Appointment confirmed
+            </span>
+
+            <span>
+              ID #{appointment.id}
+            </span>
+
+          </div>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  )}
+
+</div>
 
     </main>
-
   );
 }
-
 
 export default Appointments;

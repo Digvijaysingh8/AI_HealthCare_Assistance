@@ -2,9 +2,12 @@ from pydantic import BaseModel
 
 
 class RegisterRequest(BaseModel):
+    name: str
     email: str
     password: str
-    role: str
+    age: int
+    gender: str
+    role: str = "patient"
 
 
 class LoginRequest(BaseModel):

@@ -1,254 +1,264 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link
+} from "react-router-dom";
+
+import MyAppointments from "./pages/MyAppointments";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Patients from "./pages/Patients";
 import Doctors from "./pages/Doctors";
 import Appointments from "./pages/Appointments";
+import MyPatients from "./pages/MyPatients";
+import DoctorAppointments from "./pages/DoctorAppointments";
+import AIAssistant from "./pages/AIAssistant";
+
+import ProtectedRoute from "./ProtectedRoute";
 
 import "./App.css";
 
 
 function App() {
 
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState(
+    localStorage.getItem("user_role")
+  );
+
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    !!localStorage.getItem("access_token")
+  );
 
 
-  const clearChat = () => {
-    setQuestion("");
-    setAnswer("");
-  };
+  useEffect(() => {
 
+    const checkLogin = () => {
 
-  const askQuestion = async () => {
-
-    if (!question.trim()) {
-      return;
-    }
-
-    setLoading(true);
-    setAnswer("");
-
-    try {
-
-      const response = await fetch(
-        "http://127.0.0.1:8000/ai/chat",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            question: question
-          })
-        }
+      setIsLoggedIn(
+        !!localStorage.getItem("access_token")
       );
 
-
-      const data = await response.json();
-
-
-      if (!response.ok) {
-        throw new Error("API request failed");
-      }
-
-
-      setAnswer(data.answer);
-      setQuestion("");
-
-
-    } catch (error) {
-
-      setAnswer(
-        "Something went wrong. Please try again."
+      setUserRole(
+        localStorage.getItem("user_role")
       );
 
-    }
+    };
+
+    window.addEventListener(
+      "loginStatusChanged",
+      checkLogin
+    );
+
+    return () => {
+
+      window.removeEventListener(
+        "loginStatusChanged",
+        checkLogin
+      );
+
+    };
+
+  }, []);
 
 
-    setLoading(false);
+  const handleLogout = () => {
+
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user_role");
+    localStorage.removeItem("user_email");
+
+    setIsLoggedIn(false);
+    setUserRole(null);
+
+    window.location.href = "/";
+
   };
 
 
   return (
+
     <BrowserRouter>
 
       <div className="app">
 
-        {/* Header */}
+        {/* =========================================
+            NAVBAR
+            ========================================= */}
 
-        <header className="header">
+        {isLoggedIn && (
 
-          <h1>AI Healthcare Assistant</h1>
+          <header className="header">
 
-          <p>
-            Your personal healthcare information assistant
-          </p>
+            <h1>
+              AI Healthcare Assistant
+            </h1>
 
-
-          {/* Navigation */}
-
-          <nav className="navbar">
-
-            <Link to="/">
-              <button>Home</button>
-            </Link>
-
-            <Link to="/patients">
-              <button>Patients</button>
-            </Link>
-
-            <Link to="/doctors">
-              <button>Doctors</button>
-            </Link>
-
-            <Link to="/appointments">
-              <button>Appointments</button>
-            </Link>
-
-          </nav>
-
-        </header>
+            <p>
+              Your personal healthcare information assistant
+            </p>
 
 
-        {/* Pages */}
+            <nav className="navbar">
+
+              <Link to="/doctors">
+                <button>
+                  Doctors
+                </button>
+              </Link>
+
+
+              {/* PATIENT */}
+
+              {userRole === "patient" && (
+                <>
+
+                  <Link to="/my-appointments">
+                    <button>
+                      My Appointments
+                    </button>
+                  </Link>
+
+                  <Link to="/appointments">
+                    <button>
+                      Book Appointment
+                    </button>
+                  </Link>
+
+                  <Link to="/ai-assistant">
+                    <button>
+                      AI Assistant
+                    </button>
+                  </Link>
+
+                </>
+              )}
+
+
+              {/* DOCTOR */}
+
+              {userRole === "doctor" && (
+                <>
+
+                  <Link to="/my-patients">
+                    <button>
+                      My Patients
+                    </button>
+                  </Link>
+
+                  <Link to="/doctor-appointments">
+                    <button>
+                      My Appointments
+                    </button>
+                  </Link>
+
+                  <Link to="/ai-assistant">
+                    <button>
+                      AI Assistant
+                    </button>
+                  </Link>
+
+                </>
+              )}
+
+
+              {/* ADMIN */}
+
+              {userRole === "admin" && (
+                <>
+
+                  <Link to="/patients">
+                    <button>
+                      Patients
+                    </button>
+                  </Link>
+
+                  <Link to="/doctors">
+                    <button>
+                      Doctors
+                    </button>
+                  </Link>
+
+                  <Link to="/appointments">
+                    <button>
+                      Appointments
+                    </button>
+                  </Link>
+
+                  <Link to="/ai-assistant">
+                    <button>
+                      AI Assistant
+                    </button>
+                  </Link>
+
+                </>
+              )}
+
+
+              <button
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+
+            </nav>
+
+          </header>
+
+        )}
+
+
+        {/* =========================================
+            ROUTES
+            ========================================= */}
 
         <Routes>
 
-
-          {/* Home / AI Assistant */}
+          {/* PUBLIC HOME */}
 
           <Route
             path="/"
             element={
 
-              <main className="chat-container">
+              <main className="landing-page">
 
+                <div className="landing-card">
 
-                {/* Welcome message */}
+                  <h1>
+                    Welcome to Odasha
+                  </h1>
 
-                <div className="welcome-message">
-
-                  <h2>
-                    How can I help you?
-                  </h2>
-
-                  <p>
-                    Ask a healthcare-related question and I will
-                    provide information based on the available
-                    healthcare knowledge.
+                  <p className="landing-subtitle">
+                    Your personal AI-powered healthcare assistant
                   </p>
 
-                </div>
-
-
-                {/* Suggestions */}
-
-                <div className="suggestions">
-
-                  <p>
-                    Try asking:
+                  <p className="landing-description">
+                    Get healthcare information, manage your
+                    appointments, and connect with your
+                    healthcare services in one place.
                   </p>
 
+                  <div className="landing-buttons">
 
-                  <div className="suggestion-buttons">
+                    <Link to="/login">
+                      <button className="landing-login-button">
+                        Login
+                      </button>
+                    </Link>
 
-                    <button
-                      onClick={() =>
-                        setQuestion("What is diabetes?")
-                      }
-                    >
-                      What is diabetes?
-                    </button>
-
-
-                    <button
-                      onClick={() =>
-                        setQuestion(
-                          "What are common symptoms of asthma?"
-                        )
-                      }
-                    >
-                      Asthma symptoms
-                    </button>
-
-
-                    <button
-                      onClick={() =>
-                        setQuestion("What is dengue?")
-                      }
-                    >
-                      What is dengue?
-                    </button>
+                    <Link to="/register">
+                      <button className="landing-register-button">
+                        Register
+                      </button>
+                    </Link>
 
                   </div>
 
-                </div>
-
-
-                {/* Question input */}
-
-                <div className="input-area">
-
-                  <textarea
-                    placeholder="Ask your healthcare question..."
-                    rows="4"
-                    value={question}
-                    onChange={(e) =>
-                      setQuestion(e.target.value)
-                    }
-                  />
-
-
-                  {/* Ask button */}
-
-                  <button
-                    onClick={askQuestion}
-                    disabled={loading}
-                  >
-                    {loading
-                      ? "Thinking..."
-                      : "Ask Question"}
-                  </button>
-
-
-                  {/* Answer */}
-
-                  {answer && (
-
-                    <div className="answer-area">
-
-                      <h3>
-                        Answer
-                      </h3>
-
-                      <p>
-                        {answer}
-                      </p>
-
-                    </div>
-
-                  )}
-
-
-                  {/* Clear button */}
-
-                  {answer && (
-
-                    <div className="clear-container">
-
-                      <button
-                        className="clear-button"
-                        onClick={clearChat}
-                        disabled={loading}
-                      >
-                        Clear
-                      </button>
-
-                    </div>
-
-                  )}
+                  <p className="landing-register-text">
+                    Your health. Your care. Your assistant.
+                  </p>
 
                 </div>
 
@@ -258,37 +268,141 @@ function App() {
           />
 
 
-          {/* Patients */}
+          {/* LOGIN */}
 
           <Route
-            path="/patients"
-            element={<Patients />}
+            path="/login"
+            element={<Login />}
           />
 
 
-          {/* Doctors */}
+          {/* REGISTER */}
+
+          <Route
+            path="/register"
+            element={<Register />}
+          />
+
+
+          {/* DOCTORS */}
 
           <Route
             path="/doctors"
-            element={<Doctors />}
+            element={
+
+              <ProtectedRoute>
+
+                <Doctors />
+
+              </ProtectedRoute>
+
+            }
           />
 
 
-          {/* Appointments */}
+          {/* PATIENTS */}
+
+          <Route
+            path="/patients"
+            element={
+
+              <ProtectedRoute>
+
+                <Patients />
+
+              </ProtectedRoute>
+
+            }
+          />
+
+
+          {/* BOOK APPOINTMENT */}
 
           <Route
             path="/appointments"
-            element={<Appointments />}
+            element={
+
+              <ProtectedRoute>
+
+                <Appointments />
+
+              </ProtectedRoute>
+
+            }
           />
 
+
+          {/* MY APPOINTMENTS */}
+
+          <Route
+            path="/my-appointments"
+            element={
+
+              <ProtectedRoute>
+
+                <MyAppointments />
+
+              </ProtectedRoute>
+
+            }
+          />
+
+
+          {/* MY PATIENTS */}
+
+          <Route
+            path="/my-patients"
+            element={
+
+              <ProtectedRoute>
+
+                <MyPatients />
+
+              </ProtectedRoute>
+
+            }
+          />
+
+
+          {/* DOCTOR APPOINTMENTS */}
+
+          <Route
+            path="/doctor-appointments"
+            element={
+
+              <ProtectedRoute>
+
+                <DoctorAppointments />
+
+              </ProtectedRoute>
+
+            }
+          />
+
+
+          {/* AI ASSISTANT */}
+
+          <Route
+            path="/ai-assistant"
+            element={
+
+              <ProtectedRoute>
+
+                <AIAssistant />
+
+              </ProtectedRoute>
+
+            }
+          />
 
         </Routes>
 
       </div>
 
     </BrowserRouter>
-  );
-}
 
+  );
+
+}
 
 export default App;
