@@ -22,16 +22,21 @@ router = APIRouter(
 @router.post("/")
 def create_appointment(
     appointment: AppointmentCreate,
+    current_user: User = Depends(
+        require_role(["patient"])
+    ),
     session: Session = Depends(get_session)
 ):
     return appointment_service.create_appointment(
         appointment,
+        current_user.id,
         session
     )
 
 
 @router.get("/", response_model=list[AppointmentResponse])
 def get_appointments(
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     return appointment_service.get_appointments(
@@ -42,6 +47,7 @@ def get_appointments(
 @router.get("/patient/{patient_id}", response_model=list[AppointmentResponse])
 def get_patient_appointments(
     patient_id: int,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     return appointment_service.get_patient_appointments(
@@ -53,6 +59,7 @@ def get_patient_appointments(
 @router.get("/doctor/{doctor_id}", response_model=list[AppointmentResponse])
 def get_doctor_appointments(
     doctor_id: int,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     return appointment_service.get_doctor_appointments(
@@ -99,6 +106,7 @@ def get_my_doctor_appointments(
 @router.get("/{appointment_id}", response_model=AppointmentResponse)
 def get_appointment(
     appointment_id: int,
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
     return appointment_service.get_appointment(
@@ -111,6 +119,9 @@ def get_appointment(
 def update_appointment(
     appointment_id: int,
     updated_appointment: AppointmentUpdate,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),  
     session: Session = Depends(get_session)
 ):
     return appointment_service.update_appointment(
@@ -123,6 +134,9 @@ def update_appointment(
 @router.delete("/{appointment_id}")
 def delete_appointment(
     appointment_id: int,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return appointment_service.delete_appointment(

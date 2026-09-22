@@ -16,6 +16,9 @@ router = APIRouter(
 @router.post("/")
 def create_doctor(
     doctor: DoctorCreate,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return doctor_service.create_doctor(
@@ -58,6 +61,9 @@ def get_doctor(
 def update_doctor(
     doctor_id: int,
     updated_doctor: DoctorUpdate,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return doctor_service.update_doctor(

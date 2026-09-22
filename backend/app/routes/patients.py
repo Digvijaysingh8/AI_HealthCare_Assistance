@@ -4,7 +4,8 @@ from app.services import patient_service
 from app.models.patient import Patient
 from app.database.session import get_session
 from app.schemas.patient import PatientCreate , PatientUpdate
-
+from app.auth.dependencies import require_role
+from app.models.user import User
 
 router = APIRouter(
     prefix="/patients",
@@ -44,6 +45,9 @@ def get_patient(
 @router.delete("/{patient_id}")
 def delete_patient(
     patient_id: int,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return patient_service.delete_patient(
@@ -55,6 +59,9 @@ def delete_patient(
 def update_patient(
     patient_id: int,
     updated_patient: PatientUpdate,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return patient_service.update_patient(

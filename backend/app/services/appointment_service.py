@@ -82,14 +82,19 @@ def get_available_slots(
 
 def create_appointment(
     appointment: AppointmentCreate,
+    user_id: int,
     session: Session
 ):
-    patient = session.get(Patient, appointment.patient_id)
+    patient = session.exec(
+        select(Patient).where(
+            Patient.user_id == user_id
+        )
+    ).first()
 
     if not patient:
         raise HTTPException(
             status_code=404,
-            detail="Patient not found"
+            detail="Patient profile not found"
         )
 
     doctor = session.get(Doctor, appointment.doctor_id)
@@ -121,7 +126,7 @@ def create_appointment(
         )
 
     new_appointment = Appointment(
-        patient_id=appointment.patient_id,
+        patient_id=patient.id,
         doctor_id=appointment.doctor_id,
         appointment_date=appointment.appointment_date.isoformat(),
         appointment_time=appointment.appointment_time.strftime("%H:%M")

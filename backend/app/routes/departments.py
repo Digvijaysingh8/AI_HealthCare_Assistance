@@ -4,7 +4,8 @@ from app.services import department_service
 from app.models.department import Department
 from app.database.session import get_session
 from app.schemas.department import DepartmentCreate, DepartmentUpdate
-
+from app.auth.dependencies import require_role
+from app.models.user import User
 
 router = APIRouter(
     prefix="/departments",
@@ -15,6 +16,9 @@ router = APIRouter(
 @router.post("/")
 def create_department(
     department: DepartmentCreate,
+        current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return department_service.create_department(
@@ -47,6 +51,9 @@ def get_department(
 def update_department(
     department_id: int,
     updated_department: DepartmentUpdate,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return department_service.update_department(
@@ -59,6 +66,9 @@ def update_department(
 @router.delete("/{department_id}")
 def delete_department(
     department_id: int,
+    current_user: User = Depends(
+        require_role(["admin"])
+    ),
     session: Session = Depends(get_session)
 ):
     return department_service.delete_department(
