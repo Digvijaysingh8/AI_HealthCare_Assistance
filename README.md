@@ -1,47 +1,74 @@
-# AI Healthcare Appointment & Patient Assistance Platform
+# 🏥 ODASHA — AI-Powered Healthcare Assistant
 
-An AI-powered healthcare assistant designed to help patients manage appointments, retrieve healthcare information, and handle routine healthcare-related queries through a conversational interface.
+> A full-stack healthcare management application that combines **FastAPI, React, SQLite, JWT Authentication, Role-Based Access Control (RBAC), Appointment Scheduling, Retrieval-Augmented Generation (RAG), and Generative AI** into a single platform.
 
-The platform combines **FastAPI, SQLite, SQLModel, Redis, LangChain, LangGraph, LLMs, and Retrieval-Augmented Generation (RAG)** to provide an intelligent and scalable healthcare assistance system.
+---
 
-## 🚀 Features
+## 📌 Overview
 
-- Patient management
-- Doctor and department information
-- Appointment booking and management
-- View upcoming appointments
-- Reschedule or cancel appointments
-- AI-powered conversational assistance
-- Healthcare information retrieval using RAG
-- Context-aware responses using LLMs
-- AI workflow orchestration with LangGraph
-- SQLite database for persistent data storage
-- Redis for caching and temporary state
-- REST APIs using FastAPI
-- Human-assistance routing for requests requiring staff intervention
+**ODASHA (AI Healthcare Assistant)** is a full-stack healthcare application designed to bring common healthcare-management workflows and AI-powered healthcare information into one platform.
 
-## 🏗️ Architecture
+The application provides separate experiences for:
+
+- 👤 Patients
+- 👨‍⚕️ Doctors
+- 🛡️ Administrators
+
+Patients can explore doctors, book appointments, view their appointments, and interact with an AI healthcare assistant.
+
+Doctors can view their associated patients and appointments.
+
+Administrators have access to management-level functionality for patients, doctors, departments, and appointments.
+
+The AI assistant uses a **RAG pipeline** to retrieve relevant information from a healthcare knowledge base before generating a response. This helps the system provide answers based on the application's available healthcare information rather than relying only on the language model.
+
+> ⚠️ **Important:** This project is an educational/portfolio application. The AI assistant is intended for informational purposes and should not be considered a substitute for a qualified medical professional, diagnosis, or emergency medical care.
+
+---
+
+# 🚀 Features
+
+## 🔐 Authentication & Security
+
+- User registration
+- User login
+- JWT-based authentication
+- Password hashing
+- Protected frontend routes
+- Backend authentication dependency
+- Role-Based Access Control (RBAC)
+- Patient / Doctor / Admin role separation
+- Ownership-based access control
+- Protected appointment creation
+- Prevention of unauthorized patient access
+- Prevention of unauthorized role-based operations
+
+### Authentication Flow
 
 ```text
-                    ┌──────────────────────┐
-                    │     Web Dashboard    │
-                    │    User Interface    │
-                    └──────────┬───────────┘
-                               │
-                               │ REST API
-                               ▼
-                    ┌──────────────────────┐
-                    │        FastAPI       │
-                    │      Backend API     │
-                    └──────────┬───────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              │                │                │
-              ▼                ▼                ▼
-       ┌─────────────┐  ┌─────────────┐  ┌──────────────┐
-       │   SQLite   │  │    Redis    │  │  AI Agent    │
-       │             │  │             │  │  LangGraph   │
-       │ Patients    │  │ Cache/State │  │              │
-       │ Doctors     │  │             │  │ LangChain    │
-       │ Appointments│  │             │  │ LLM + RAG    │
-       └─────────────┘  └─────────────┘  └──────────────┘
+User
+ │
+ ├── Register
+ │
+ ▼
+Password Hashing
+ │
+ ▼
+SQLite User Record
+ │
+ ├── Login
+ │
+ ▼
+JWT Access Token
+ │
+ ▼
+Frontend localStorage
+ │
+ ▼
+Protected API Requests
+ │
+ ▼
+FastAPI Authentication
+ │
+ ▼
+Role / Ownership Validation
