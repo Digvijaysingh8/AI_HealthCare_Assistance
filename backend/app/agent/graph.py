@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 import time
-
+from dataclasses import dataclass
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.mcp import MCPAdapter
@@ -11,30 +11,33 @@ from langchain_core.tools import StructuredTool
 
 
 load_dotenv()
-
+@dataclass
+class AgentContext:
+    user_id: int
 
 backend_root = Path(__file__).resolve().parents[2]
 
-
-MCP_CONFIG = {
-    "mcpServers": {
-        "odasha": {
-            "command": sys.executable,
-            "args": [
-                "-m",
-                "app.mcp.server"
-            ],
-            "cwd": str(backend_root)
-        }
-    }
-}
-
-
-async def run_agent(question: str):
+async def run_agent(question: str , user_id: int):
 
     start_time = time.time()
 
     print("\n--- AGENT START ---")
+    mcp_env = os.environ.copy()
+    mcp_env["ODASHA_USER_ID"] = str(user_id)
+
+    MCP_CONFIG = {
+        "mcpServers": {
+            "odasha": {
+                "command": sys.executable,
+                "args": [
+                    "-m",
+                    "app.mcp.server"
+                ],
+                "cwd": str(backend_root),
+                "env": mcp_env
+            }
+        }
+    }
 
     model = ChatGroq(
         model="openai/gpt-oss-120b",
@@ -98,6 +101,7 @@ async def run_agent(question: str):
 
         agent = create_agent(
             model=model,
+            context_schema=AgentContext,
             tools=tools,
             system_prompt="""
 You are Odasha, a healthcare information assistant.
@@ -119,6 +123,17 @@ For doctor-related questions:
 For appointment questions:
 - Use the available appointment tools.
 - Do not invent doctors, dates, times, or availability.
+- For a new booking request, first use find_doctor if needed.
+- Then use get_available_slots to verify the requested date and time.
+- Then use prepare_appointment to validate the booking.
+- Do NOT call book_appointment during the initial request.
+- Ask the user for explicit confirmation before booking.
+- Only call book_appointment when the user explicitly confirms the previously prepared booking by saying CONFIRM or an equally clear confirmation.
+- Never ask the user for a patient ID. The authenticated patient is determined by the backend.
+- If the user's message starts with "CONFIRM_BOOKING:", treat it as explicit confirmation of the appointment described after the colon.
+- For a CONFIRM_BOOKING request, do not call prepare_appointment again.
+- Extract the doctor, date, and time from the booking request, verify the doctor and slot if necessary, and then call book_appointment with confirmation="CONFIRM".
+- After a successful book_appointment result, tell the user the appointment was booked successfully.
 
 Do not provide a diagnosis or replace a healthcare professional.
 """
@@ -132,7 +147,8 @@ Do not provide a diagnosis or replace a healthcare professional.
                         "content": question
                     }
                 ]
-            }
+            },
+            context=AgentContext(user_id=user_id)
         )
 
         return result["messages"][-1].content

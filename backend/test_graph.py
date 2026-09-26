@@ -6,7 +6,8 @@ from app.agent.graph import run_agent
 async def main():
 
     answer = await run_agent(
-        "What appointment slots are available for Dr. Sharma on 30 September 2026?"
+        "I want to book an appointment with Dr. Sharma on 30 September 2026 at 10:00.",
+        user_id=2
     )
 
     print("Agent response:")

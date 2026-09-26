@@ -5,6 +5,9 @@ function AIAssistant() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [showConfirmButton, setShowConfirmButton] = useState(false);
+  const [pendingBooking, setPendingBooking] = useState("");
 
   const suggestions = [
     "What are the symptoms of diabetes?",
@@ -13,10 +16,16 @@ function AIAssistant() {
     "What is dengue?"
   ];
 
-  const askQuestion = async (e) => {
-    e.preventDefault();
+  const askQuestion = async (e, overrideQuestion = null) => {
 
-    if (!question.trim()) {
+    if (e) {
+      e.preventDefault();
+    }
+
+    const questionToSend =
+      overrideQuestion || question;
+
+    if (!questionToSend.trim()) {
       return;
     }
 
@@ -24,16 +33,32 @@ function AIAssistant() {
     setAnswer("");
     setError("");
 
+    const currentConversation = [
+      ...conversationHistory,
+      {
+        role: "user",
+        content: questionToSend
+      }
+    ];
+
+    const conversationText = currentConversation
+      .map(
+        (message) =>
+          `${message.role.toUpperCase()}: ${message.content}`
+      )
+      .join("\n\n");
+
     try {
       const response = await fetch(
         "http://127.0.0.1:8000/ai/chat",
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`
           },
           body: JSON.stringify({
-            question: question
+            question: conversationText
           })
         }
       );
@@ -48,6 +73,34 @@ function AIAssistant() {
 
       setAnswer(data.answer);
 
+      setConversationHistory([
+        ...currentConversation,
+        {
+          role: "assistant",
+          content: data.answer
+        }
+      ]);
+
+      // Show confirm button only when booking is ready
+      const answerText = data.answer.toLowerCase();
+
+      const bookingReady =
+        (
+          answerText.includes("please reply") &&
+          answerText.includes("confirm")
+        ) ||
+        answerText.includes("ready to be confirmed") ||
+        answerText.includes("ready for booking") ||
+        answerText.includes("please confirm") ||
+        answerText.includes("confirm if you would like me to book");
+
+      setShowConfirmButton(bookingReady);
+      if (bookingReady) {
+        setPendingBooking(questionToSend);
+      } else {
+        setPendingBooking("");
+      }
+
     } catch (error) {
       setError(error.message);
 
@@ -60,13 +113,25 @@ function AIAssistant() {
     setQuestion(suggestion);
     setAnswer("");
     setError("");
+    setShowConfirmButton(false);
   };
 
   const clearChat = () => {
+    setConversationHistory([]);
     setQuestion("");
     setAnswer("");
     setError("");
+    setShowConfirmButton(false);
   };
+const handleConfirm = () => {
+  console.log("CONFIRM BUTTON CLICKED");
+  console.log("Pending booking:", pendingBooking);
+
+  askQuestion(
+    null,
+    `CONFIRM_BOOKING: ${pendingBooking}`
+  );
+};
 
   return (
     <main className="ai-page">
@@ -207,12 +272,32 @@ function AIAssistant() {
               {answer}
             </div>
 
-            <button
-              className="clear-ai-button"
-              onClick={clearChat}
-            >
-              Clear conversation
-            </button>
+
+            {/* AI ACTION BUTTONS */}
+
+            <div className="ai-action-buttons">
+
+              {showConfirmButton && (
+
+                <button
+                  type="button"
+                  className="confirm-ai-button"
+                  onClick={handleConfirm}
+                >
+                  Confirm
+                </button>
+
+              )}
+
+              <button
+                type="button"
+                className="clear-ai-button"
+                onClick={clearChat}
+              >
+                Clear conversation
+              </button>
+
+            </div>
 
           </div>
 
