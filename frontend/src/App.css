@@ -1877,38 +1877,6 @@ body {
   }
 
 }
-.ai-response {
-  margin-top: 16px;
-  padding: 20px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-}
-
-.response-content {
-  margin-top: 15px;
-  padding: 18px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  line-height: 1.6;
-}
-
-.clear-ai-button {
-  display: block;
-  margin: 15px auto 0;
-  padding: 9px 18px;
-  border: none;
-  border-radius: 8px;
-  background: #64748b;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.clear-ai-button:hover {
-  background: #475569;
-}
 /* =========================================
    MY APPOINTMENTS
    ========================================= */
@@ -2689,203 +2657,8 @@ body {
 
 }
 /* =========================================
-   EXPANDABLE DOCTOR PROFILE
-   ========================================= */
-
-.doctor-card {
-  cursor: pointer;
-}
-
-.doctor-card-expanded {
-  grid-column: span 1;
-}
-
-.doctor-card-main {
-  display: flex;
-  gap: 18px;
-}
-
-.doctor-card-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.doctor-view-button {
-  width: auto;
-  padding: 10px 14px;
-
-  background: #eff6ff;
-  color: #2563eb;
-
-  border: 1px solid #bfdbfe;
-  border-radius: 9px;
-
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.doctor-view-button:hover {
-  background: #dbeafe;
-}
-
-
-/* Expanded section */
-
-.doctor-expanded-info {
-  margin-top: 20px;
-}
-
-.doctor-expanded-divider {
-  height: 1px;
-  background: #e2e8f0;
-  margin-bottom: 20px;
-}
-
-.doctor-detail-section {
-  margin-bottom: 20px;
-}
-
-.doctor-detail-section h4 {
-  margin: 0 0 8px;
-
-  color: #1e293b;
-
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.doctor-detail-section p {
-  margin: 0;
-
-  color: #64748b;
-
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.doctor-detail-grid {
-  display: grid;
-
-  grid-template-columns:
-    repeat(2, minmax(0, 1fr));
-
-  gap: 12px;
-
-  margin-bottom: 20px;
-}
-
-.doctor-detail-item {
-  padding: 13px;
-
-  background: #f8fafc;
-
-  border: 1px solid #e2e8f0;
-
-  border-radius: 10px;
-}
-
-.doctor-detail-item span {
-  display: block;
-
-  margin-bottom: 5px;
-
-  color: #94a3b8;
-
-  font-size: 9px;
-  font-weight: 800;
-
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.doctor-detail-item strong {
-  display: block;
-
-  color: #334155;
-
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-
-/* Areas of focus */
-
-.doctor-specialization-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.doctor-specialization-tag {
-  padding: 7px 10px;
-
-  background: #eff6ff;
-
-  border: 1px solid #dbeafe;
-
-  border-radius: 999px;
-
-  color: #2563eb;
-
-  font-size: 10px;
-  font-weight: 700;
-}
-
-
-/* Collapse */
-
-.doctor-collapse-button {
-  width: 100%;
-
-  margin-top: 5px;
-
-  padding: 10px;
-
-  background: #f1f5f9;
-
-  color: #475569;
-
-  border: 1px solid #e2e8f0;
-  border-radius: 9px;
-
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.doctor-collapse-button:hover {
-  background: #e2e8f0;
-}
-
-
-/* Mobile */
-
-@media (max-width: 600px) {
-
-  .doctor-card-main {
-    flex-direction: column;
-  }
-
-  .doctor-detail-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .doctor-card-actions {
-    flex-direction: column;
-  }
-
-  .doctor-card-actions button {
-    width: 100%;
-  }
-
-}
-/* =========================================
    DOCTOR PROFILE MODAL
    ========================================= */
-
-.doctor-card {
-  cursor: default;
-}
 
 .doctor-card-main {
   display: flex;
@@ -3273,31 +3046,39 @@ body {
 
   padding: 12px;
 
+  border: none;
   border-radius: 10px;
 
   font-size: 13px;
-
   font-weight: 700;
+
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
 .doctor-modal-book {
   background: #2563eb;
-
   color: white;
 }
 
-.doctor-modal-book:hover {
+.doctor-modal-book:hover:not(:disabled) {
   background: #1d4ed8;
+  transform: translateY(-1px);
 }
 
 .doctor-modal-cancel {
   background: #f1f5f9;
-
   color: #475569;
 }
 
 .doctor-modal-cancel:hover {
   background: #e2e8f0;
+}
+
+.doctor-modal-book:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 

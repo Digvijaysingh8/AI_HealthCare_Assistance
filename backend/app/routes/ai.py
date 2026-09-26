@@ -11,9 +11,9 @@ router = APIRouter(
 
 
 @router.post("/chat", response_model=AIResponse)
-def chat(request: AIRequest):
+async def chat(request: AIRequest):
 
-    answer = ask_healthcare_assistant(
+    answer = await ask_healthcare_assistant(
         request.question
     )
 

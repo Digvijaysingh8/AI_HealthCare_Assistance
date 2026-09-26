@@ -1,16 +1,8 @@
-from app.rag.retriever import retrieve_chunks
-from app.ai.llm import generate_answer
+from app.agent.graph import run_agent
 
 
-def ask_healthcare_assistant(question: str):
+async def ask_healthcare_assistant(question: str):
 
-    results = retrieve_chunks(question)
-
-    context = "\n\n".join(results)
-
-    answer = generate_answer(
-        question,
-        context
-    )
+    answer = await run_agent(question)
 
     return answer
