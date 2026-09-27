@@ -7,7 +7,7 @@ function AIAssistant() {
   const [error, setError] = useState("");
   const [conversationHistory, setConversationHistory] = useState([]);
   const [showConfirmButton, setShowConfirmButton] = useState(false);
-  const [pendingBooking, setPendingBooking] = useState("");
+  const [appointmentThreadId, setAppointmentThreadId] = useState(null);
 
   const suggestions = [
     "What are the symptoms of diabetes?",
@@ -16,22 +16,22 @@ function AIAssistant() {
     "What is dengue?"
   ];
 
-  const askQuestion = async (e, overrideQuestion = null) => {
-
+  const askQuestion = async (e) => {
     if (e) {
       e.preventDefault();
     }
 
-    const questionToSend =
-      overrideQuestion || question;
+    const questionToSend = question.trim();
 
-    if (!questionToSend.trim()) {
+    if (!questionToSend || loading) {
       return;
     }
 
     setLoading(true);
     setAnswer("");
     setError("");
+    setShowConfirmButton(false);
+    setAppointmentThreadId(null);
 
     const currentConversation = [
       ...conversationHistory,
@@ -81,29 +81,71 @@ function AIAssistant() {
         }
       ]);
 
-      // Show confirm button only when booking is ready
-      const answerText = data.answer.toLowerCase();
-
-      const bookingReady =
-        (
-          answerText.includes("please reply") &&
-          answerText.includes("confirm")
-        ) ||
-        answerText.includes("ready to be confirmed") ||
-        answerText.includes("ready for booking") ||
-        answerText.includes("please confirm") ||
-        answerText.includes("confirm if you would like me to book");
-
-      setShowConfirmButton(bookingReady);
-      if (bookingReady) {
-        setPendingBooking(questionToSend);
+      if (data.requires_confirmation && data.thread_id) {
+        setShowConfirmButton(true);
+        setAppointmentThreadId(data.thread_id);
       } else {
-        setPendingBooking("");
+        setShowConfirmButton(false);
+        setAppointmentThreadId(null);
       }
-
     } catch (error) {
       setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleConfirm = async () => {
+    if (!appointmentThreadId || loading) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/ai/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`
+          },
+          body: JSON.stringify({
+            question: "Confirm appointment",
+            thread_id: appointmentThreadId,
+            confirmed: true
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Failed to confirm appointment"
+        );
+      }
+
+      setAnswer(data.answer);
+
+      setConversationHistory((previous) => [
+        ...previous,
+        {
+          role: "user",
+          content: "Confirmed appointment"
+        },
+        {
+          role: "assistant",
+          content: data.answer
+        }
+      ]);
+
+      setShowConfirmButton(false);
+      setAppointmentThreadId(null);
+    } catch (error) {
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -114,6 +156,7 @@ function AIAssistant() {
     setAnswer("");
     setError("");
     setShowConfirmButton(false);
+    setAppointmentThreadId(null);
   };
 
   const clearChat = () => {
@@ -122,98 +165,53 @@ function AIAssistant() {
     setAnswer("");
     setError("");
     setShowConfirmButton(false);
+    setAppointmentThreadId(null);
   };
-const handleConfirm = () => {
-  console.log("CONFIRM BUTTON CLICKED");
-  console.log("Pending booking:", pendingBooking);
-
-  askQuestion(
-    null,
-    `CONFIRM_BOOKING: ${pendingBooking}`
-  );
-};
 
   return (
     <main className="ai-page">
-
       {/* Hero */}
-
       <section className="ai-hero">
-
         <div className="ai-badge">
           ✦ AI HEALTHCARE ASSISTANT
         </div>
 
-        <h2>
-          How can we help you today?
-        </h2>
+        <h2>How can we help you today?</h2>
 
         <p>
           Ask a healthcare-related question and get
           information based on our healthcare knowledge base.
         </p>
-
       </section>
 
-
       {/* Main AI Card */}
-
       <section className="ai-card">
-
         {/* Suggestions */}
-
         <div className="suggestions-section">
-
-          <h3>
-            Try asking
-          </h3>
+          <h3>Try asking</h3>
 
           <div className="suggestion-grid">
-
             {suggestions.map((suggestion, index) => (
-
               <button
                 key={index}
                 className="suggestion-card"
-                onClick={() =>
-                  selectSuggestion(suggestion)
-                }
+                onClick={() => selectSuggestion(suggestion)}
               >
-                <span className="suggestion-icon">
-                  +
-                </span>
-
-                <span>
-                  {suggestion}
-                </span>
-
+                <span className="suggestion-icon">+</span>
+                <span>{suggestion}</span>
               </button>
-
             ))}
-
           </div>
-
         </div>
 
-
         {/* Question Form */}
-
-        <form
-          className="ai-form"
-          onSubmit={askQuestion}
-        >
-
-          <label>
-            Your question
-          </label>
+        <form className="ai-form" onSubmit={askQuestion}>
+          <label>Your question</label>
 
           <div className="question-box">
-
             <textarea
               value={question}
-              onChange={(e) =>
-                setQuestion(e.target.value)
-              }
+              onChange={(e) => setQuestion(e.target.value)}
               placeholder="Type your healthcare question here..."
               rows="4"
             />
@@ -223,96 +221,65 @@ const handleConfirm = () => {
               disabled={loading || !question.trim()}
               className="ask-button"
             >
-              {loading
-                ? "Thinking..."
-                : "Ask AI"}
+              {loading ? "Thinking..." : "Ask AI"}
             </button>
-
           </div>
-
         </form>
 
-
         {/* Error */}
-
         {error && (
-
           <div className="ai-error">
             {error}
           </div>
-
         )}
 
-
         {/* AI Answer */}
-
         {answer && (
-
           <div className="ai-response">
-
             <div className="response-header">
-
-              <div className="ai-avatar">
-                AI
-              </div>
+              <div className="ai-avatar">AI</div>
 
               <div>
-                <h3>
-                  Odasha AI
-                </h3>
-
-                <span>
-                  Healthcare Assistant
-                </span>
+                <h3>Odasha AI</h3>
+                <span>Healthcare Assistant</span>
               </div>
-
             </div>
 
             <div className="response-content">
               {answer}
             </div>
 
-
             {/* AI ACTION BUTTONS */}
-
             <div className="ai-action-buttons">
-
               {showConfirmButton && (
-
                 <button
                   type="button"
                   className="confirm-ai-button"
                   onClick={handleConfirm}
+                  disabled={loading}
                 >
-                  Confirm
+                  {loading ? "Booking..." : "Confirm"}
                 </button>
-
               )}
 
               <button
                 type="button"
                 className="clear-ai-button"
                 onClick={clearChat}
+                disabled={loading}
               >
                 Clear conversation
               </button>
-
             </div>
-
           </div>
-
         )}
-
       </section>
 
-
       {/* Disclaimer */}
-
       <p className="ai-disclaimer">
         This assistant provides general healthcare information
         and is not a substitute for professional medical advice.
       </p>
-
     </main>
   );
 }

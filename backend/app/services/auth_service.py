@@ -17,12 +17,11 @@ def register_user(
 ):
     if user_data.role not in [
         "patient",
-        "doctor",
-        "admin"
+        "doctor"
     ]:
         raise HTTPException(
             status_code=400,
-            detail="Invalid role"
+            detail="Invalid role or unauthorized registration"
         )
 
     existing_user = session.exec(

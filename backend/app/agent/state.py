@@ -6,3 +6,5 @@ class AgentState(MessagesState):
     intent: str | None
     response: str | None
     pending_booking: dict | None
+    thread_id: str | None
+    requires_confirmation: bool

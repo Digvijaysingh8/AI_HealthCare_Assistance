@@ -5,7 +5,6 @@ from app.ai.ai_service import ask_healthcare_assistant
 from app.auth.dependencies import get_current_user
 from app.models.user import User
 
-
 router = APIRouter(
     prefix="/ai",
     tags=["AI Assistant"]
@@ -17,12 +16,11 @@ async def chat(
     request: AIRequest,
     current_user: User = Depends(get_current_user)
 ):
-
-    answer = await ask_healthcare_assistant(
-        request.question,
-        current_user.id
+    result = await ask_healthcare_assistant(
+        question=request.question,
+        user_id=current_user.id,
+        thread_id=request.thread_id,
+        confirmed=request.confirmed
     )
 
-    return AIResponse(
-        answer=answer
-    )
+    return AIResponse(**result)
