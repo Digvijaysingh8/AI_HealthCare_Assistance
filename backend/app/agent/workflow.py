@@ -8,7 +8,7 @@ from langchain_groq import ChatGroq
 
 from app.agent.graph import run_agent
 from app.agent.state import AgentState
-from app.agent.appointment_flow import appointment_graph
+from app.agent import appointment_flow
 
 
 class AppointmentDetails(BaseModel):
@@ -159,7 +159,7 @@ async def appointment_node(state: AgentState):
         }
     }
 
-    result = await appointment_graph.ainvoke(
+    result = await appointment_flow.appointment_graph.ainvoke(
         appointment_state,
         config=config
     )

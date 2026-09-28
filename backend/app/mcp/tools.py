@@ -1,7 +1,7 @@
 import os
 from mcp.server.mcpserver import MCPServer
 from sqlmodel import Session, select
-from app.rag.retriever import retrieve_chunks
+
 from app.database.database import engine
 from app.services import doctor_service
 from datetime import date , datetime
@@ -320,10 +320,38 @@ def get_available_slots(
     
 @mcp.tool(name="search_healthcare_knowledge")
 def search_healthcare_knowledge(question: str) -> list[str]:
-    """Search the healthcare knowledge base for information relevant to a question."""
+    """Search the healthcare knowledge base for relevant information."""
 
-    return retrieve_chunks(question)
+    import sys
+    import time
 
+    start = time.perf_counter()
+
+    load_start = time.perf_counter()
+    from app.rag.retriever import retrieve_chunks
+    load_time = time.perf_counter() - load_start
+
+    search_start = time.perf_counter()
+    results = retrieve_chunks(question)
+    search_time = time.perf_counter() - search_start
+
+    print(
+        f"[RAG] Model, index and retriever loading: {load_time:.2f}s",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(
+        f"[RAG] Embedding and retrieval: {search_time:.2f}s",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(
+        f"[RAG] Total tool time: {time.perf_counter() - start:.2f}s",
+        file=sys.stderr,
+        flush=True,
+    )
+
+    return results
 @mcp.tool(name="search_doctors")
 def search_doctors(specialization: str) -> list[dict]:
     """Find doctors by medical specialization."""

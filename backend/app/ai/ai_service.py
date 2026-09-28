@@ -1,5 +1,5 @@
 from app.agent.workflow import healthcare_graph
-from app.agent.appointment_flow import appointment_graph
+from app.agent import appointment_flow
 from langgraph.types import Command
 
 
@@ -25,7 +25,7 @@ async def ask_healthcare_assistant(
             }
         }
 
-        checkpoint = await appointment_graph.aget_state(config)
+        checkpoint = await appointment_flow.appointment_graph.aget_state(config)
         saved_state = checkpoint.values
 
         # Verify that this appointment belongs to the logged-in user.
@@ -41,7 +41,7 @@ async def ask_healthcare_assistant(
                 "pending_booking": None
             }
 
-        result = await appointment_graph.ainvoke(
+        result = await appointment_flow.appointment_graph.ainvoke(
             Command(resume=True),
             config=config
         )

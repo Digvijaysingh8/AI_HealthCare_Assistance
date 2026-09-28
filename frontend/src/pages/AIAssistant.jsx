@@ -1,6 +1,78 @@
+
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+const normalize = (value = "") =>
+  String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const specialtyGroups = [
+  { query: ["cardiologist", "cardiology"], db: ["cardiology"] },
+  { query: ["dermatologist", "dermatology"], db: ["dermatology"] },
+  { query: ["neurologist", "neurology"], db: ["neurology"] },
+  { query: ["pediatrician", "pediatrics"], db: ["pediatrics", "paediatrics"] },
+  { query: ["orthopedic", "orthopaedic", "orthopedics"], db: ["orthopedic", "orthopaedic"] },
+  { query: ["gynecologist", "gynaecologist", "gynecology", "gynaecology"], db: ["gynecology", "gynaecology"] },
+  { query: ["general physician", "general medicine"], db: ["general medicine", "general physician"] },
+  { query: ["endocrinologist", "endocrinology"], db: ["endocrinology"] },
+  { query: ["gastroenterologist", "gastroenterology"], db: ["gastroenterology"] },
+  { query: ["psychiatrist", "psychiatry"], db: ["psychiatry"] },
+];
+
+const isDoctorLookup = (question) => {
+  const hasLookupWord =
+    /\b(find|search|show|list|looking for|look for|which|who|available|have)\b/i.test(question);
+
+  const hasDoctorWord =
+    /\b(doctors?|physicians?|specialists?|cardiologists?|dermatologists?|neurologists?|pediatricians?|orthopedics?|orthopaedics?|gynecologists?|gynaecologists?|endocrinologists?|gastroenterologists?|psychiatrists?)\b/i.test(question);
+
+  const hasDoctorName = /\bdr\.?\s+[a-z]/i.test(question);
+
+  return hasLookupWord && (hasDoctorWord || hasDoctorName);
+};
+
+const findMatchingDoctors = (question, doctors) => {
+  const query = normalize(question);
+  const words = new Set(query.split(" "));
+
+  // Match an actual doctor name first.
+  const namedDoctors = doctors.filter((doctor) => {
+    const name = normalize(doctor.name).replace(/^dr\s+/, "");
+    const parts = name.split(" ").filter((part) => part.length > 2);
+
+    return (
+      (name && query.includes(name)) ||
+      parts.some((part) => words.has(part))
+    );
+  });
+
+  if (namedDoctors.length > 0) {
+    return namedDoctors;
+  }
+
+  // Match the requested specialty against database records.
+  const group = specialtyGroups.find((item) =>
+    item.query.some((term) => query.includes(normalize(term)))
+  );
+
+  if (group) {
+    return doctors.filter((doctor) => {
+      const specialization = normalize(doctor.specialization);
+
+      return group.db.some((term) =>
+        specialization.includes(normalize(term))
+      );
+    });
+  }
+
+  // General doctor search.
+  return doctors;
+};
 
 function AIAssistant() {
+  const navigate = useNavigate();
+
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
@@ -8,6 +80,8 @@ function AIAssistant() {
   const [conversationHistory, setConversationHistory] = useState([]);
   const [showConfirmButton, setShowConfirmButton] = useState(false);
   const [appointmentThreadId, setAppointmentThreadId] = useState(null);
+  const [doctorResults, setDoctorResults] = useState([]);
+  const [showDoctorResults, setShowDoctorResults] = useState(false);
 
   const suggestions = [
     "What are the symptoms of diabetes?",
@@ -16,39 +90,75 @@ function AIAssistant() {
     "What is dengue?"
   ];
 
+  // Redirect to booking page with the selected doctor.
+  const bookDoctor = (doctor) => {
+    navigate("/appointments", {
+      state: {
+        doctorId: Number(doctor.id),
+        doctorName: doctor.name
+      }
+    });
+  };
+
   const askQuestion = async (e) => {
-    if (e) {
-      e.preventDefault();
-    }
+    if (e) e.preventDefault();
 
     const questionToSend = question.trim();
 
-    if (!questionToSend || loading) {
-      return;
-    }
+    if (!questionToSend || loading) return;
 
     setLoading(true);
     setAnswer("");
     setError("");
     setShowConfirmButton(false);
     setAppointmentThreadId(null);
+    setDoctorResults([]);
+    setShowDoctorResults(false);
 
     const currentConversation = [
       ...conversationHistory,
-      {
-        role: "user",
-        content: questionToSend
-      }
+      { role: "user", content: questionToSend }
     ];
 
-    const conversationText = currentConversation
-      .map(
-        (message) =>
-          `${message.role.toUpperCase()}: ${message.content}`
-      )
-      .join("\n\n");
-
     try {
+      // Fetch actual doctor records for doctor lookups.
+      if (isDoctorLookup(questionToSend)) {
+        const response = await fetch(
+          "http://127.0.0.1:8000/doctors/",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`
+            }
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.detail || "Failed to fetch doctors"
+          );
+        }
+
+        const matches = findMatchingDoctors(questionToSend, data);
+
+        const responseText = matches.length
+          ? "Here are the doctors matching your search in our database."
+          : "No doctors matching your search were found in our database.";
+
+        setDoctorResults(matches);
+        setShowDoctorResults(true);
+        setAnswer(responseText);
+
+        setConversationHistory([
+          ...currentConversation,
+          { role: "assistant", content: responseText }
+        ]);
+
+        return;
+      }
+
+      // Healthcare questions and appointment requests.
       const response = await fetch(
         "http://127.0.0.1:8000/ai/chat",
         {
@@ -58,7 +168,7 @@ function AIAssistant() {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`
           },
           body: JSON.stringify({
-            question: conversationText
+            question: questionToSend
           })
         }
       );
@@ -75,10 +185,7 @@ function AIAssistant() {
 
       setConversationHistory([
         ...currentConversation,
-        {
-          role: "assistant",
-          content: data.answer
-        }
+        { role: "assistant", content: data.answer }
       ]);
 
       if (data.requires_confirmation && data.thread_id) {
@@ -96,9 +203,7 @@ function AIAssistant() {
   };
 
   const handleConfirm = async () => {
-    if (!appointmentThreadId || loading) {
-      return;
-    }
+    if (!appointmentThreadId || loading) return;
 
     setLoading(true);
     setError("");
@@ -132,14 +237,8 @@ function AIAssistant() {
 
       setConversationHistory((previous) => [
         ...previous,
-        {
-          role: "user",
-          content: "Confirmed appointment"
-        },
-        {
-          role: "assistant",
-          content: data.answer
-        }
+        { role: "user", content: "Confirmed appointment" },
+        { role: "assistant", content: data.answer }
       ]);
 
       setShowConfirmButton(false);
@@ -157,6 +256,8 @@ function AIAssistant() {
     setError("");
     setShowConfirmButton(false);
     setAppointmentThreadId(null);
+    setDoctorResults([]);
+    setShowDoctorResults(false);
   };
 
   const clearChat = () => {
@@ -166,6 +267,8 @@ function AIAssistant() {
     setError("");
     setShowConfirmButton(false);
     setAppointmentThreadId(null);
+    setDoctorResults([]);
+    setShowDoctorResults(false);
   };
 
   return (
@@ -228,9 +331,7 @@ function AIAssistant() {
 
         {/* Error */}
         {error && (
-          <div className="ai-error">
-            {error}
-          </div>
+          <div className="ai-error">{error}</div>
         )}
 
         {/* AI Answer */}
@@ -246,10 +347,40 @@ function AIAssistant() {
             </div>
 
             <div className="response-content">
-              {answer}
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {answer}
+              </ReactMarkdown>
             </div>
 
-            {/* AI ACTION BUTTONS */}
+            {/* Doctor appointment cards */}
+            {showDoctorResults && doctorResults.length > 0 && (
+              <div className="ai-doctor-results">
+                {doctorResults.map((doctor) => (
+                  <div
+                    className="ai-doctor-result"
+                    key={doctor.id}
+                  >
+                    <div className="ai-doctor-info">
+                      <strong>{doctor.name}</strong>
+                      <span>
+                        {doctor.specialization} · ID #{doctor.id}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="ai-doctor-book-button"
+                      onClick={() => bookDoctor(doctor)}
+                    >
+                      Book Appointment
+                      <span aria-hidden="true"> →</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* AI Action Buttons */}
             <div className="ai-action-buttons">
               {showConfirmButton && (
                 <button

@@ -450,8 +450,14 @@ builder.add_conditional_edges(
 
 builder.add_edge("book_appointment", END)
 
-checkpointer = InMemorySaver()
+def build_appointment_graph(checkpointer):
+    return builder.compile(checkpointer=checkpointer)
 
-appointment_graph = builder.compile(
-    checkpointer=checkpointer
-)
+
+checkpointer = InMemorySaver()
+appointment_graph = build_appointment_graph(checkpointer)
+
+
+def set_appointment_checkpointer(checkpointer):
+    global appointment_graph
+    appointment_graph = build_appointment_graph(checkpointer)

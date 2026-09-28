@@ -197,7 +197,7 @@ function App() {
               )}
 
 
-              <button
+              <button className="logout-button"
                 onClick={handleLogout}
               >
                 Logout
