@@ -7,9 +7,11 @@ from app.schemas.patient import PatientCreate, PatientUpdate
 
 def create_patient(
     patient: PatientCreate,
-    session: Session
+    session: Session,
+    user_id: int | None = None
 ):
     new_patient = Patient(
+        user_id=user_id,
         name=patient.name,
         age=patient.age,
         gender=patient.gender

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 
 import {
@@ -103,11 +104,15 @@ function App() {
 
             <nav className="navbar">
 
-              <Link to="/doctors">
-                <button>
-                  Doctors
-                </button>
-              </Link>
+              {/* DOCTORS - HIDDEN FOR DOCTORS */}
+
+              {userRole !== "doctor" && (
+                <Link to="/doctors">
+                  <button>
+                    Doctors
+                  </button>
+                </Link>
+              )}
 
 
               {/* PATIENT */}
@@ -151,12 +156,6 @@ function App() {
                   <Link to="/doctor-appointments">
                     <button>
                       My Appointments
-                    </button>
-                  </Link>
-
-                  <Link to="/ai-assistant">
-                    <button>
-                      AI Assistant
                     </button>
                   </Link>
 

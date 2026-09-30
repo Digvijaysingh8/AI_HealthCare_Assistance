@@ -61,11 +61,10 @@ def register_user(
      
 
     elif user_data.role == "doctor":
-
         doctor = Doctor(
             user_id=new_user.id,
-            name="Dr." + user_data.email.split("@")[0],
-            specialization="Not specified"
+            name=user_data.name,
+            specialization=user_data.specialization
         )
 
         session.add(doctor)

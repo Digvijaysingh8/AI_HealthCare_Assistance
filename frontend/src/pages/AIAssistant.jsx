@@ -8,6 +8,7 @@ const normalize = (value = "") =>
   String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 const specialtyGroups = [
+  { query: ["dentist", "dentistry"], db: ["dentist", "dentistry"] },
   { query: ["cardiologist", "cardiology"], db: ["cardiology"] },
   { query: ["dermatologist", "dermatology"], db: ["dermatology"] },
   { query: ["neurologist", "neurology"], db: ["neurology"] },
@@ -25,7 +26,7 @@ const isDoctorLookup = (question) => {
     /\b(find|search|show|list|looking for|look for|which|who|available|have)\b/i.test(question);
 
   const hasDoctorWord =
-    /\b(doctors?|physicians?|specialists?|cardiologists?|dermatologists?|neurologists?|pediatricians?|orthopedics?|orthopaedics?|gynecologists?|gynaecologists?|endocrinologists?|gastroenterologists?|psychiatrists?)\b/i.test(question);
+    /\b(doctors?|physicians?|specialists?|dentists?|cardiologists?|dermatologists?|neurologists?|pediatricians?|orthopedics?|orthopaedics?|gynecologists?|gynaecologists?|endocrinologists?|gastroenterologists?|psychiatrists?)\b/i.test(question);
 
   const hasDoctorName = /\bdr\.?\s+[a-z]/i.test(question);
 
@@ -36,7 +37,6 @@ const findMatchingDoctors = (question, doctors) => {
   const query = normalize(question);
   const words = new Set(query.split(" "));
 
-  // Match an actual doctor name first.
   const namedDoctors = doctors.filter((doctor) => {
     const name = normalize(doctor.name).replace(/^dr\s+/, "");
     const parts = name.split(" ").filter((part) => part.length > 2);
@@ -51,7 +51,6 @@ const findMatchingDoctors = (question, doctors) => {
     return namedDoctors;
   }
 
-  // Match the requested specialty against database records.
   const group = specialtyGroups.find((item) =>
     item.query.some((term) => query.includes(normalize(term)))
   );
@@ -66,8 +65,219 @@ const findMatchingDoctors = (question, doctors) => {
     });
   }
 
-  // General doctor search.
   return doctors;
+};
+
+// Styled Markdown components for AI responses.
+const markdownComponents = {
+  h1: ({ children }) => (
+    <h1 style={{
+      fontSize: "24px",
+      fontWeight: 750,
+      color: "#172554",
+      margin: "8px 0 16px",
+      lineHeight: 1.4
+    }}>
+      {children}
+    </h1>
+  ),
+
+  h2: ({ children }) => (
+    <h2 style={{
+      fontSize: "21px",
+      fontWeight: 700,
+      color: "#1e3a8a",
+      margin: "22px 0 10px",
+      lineHeight: 1.4,
+      borderBottom: "1px solid #e2e8f0",
+      paddingBottom: "7px"
+    }}>
+      {children}
+    </h2>
+  ),
+
+  h3: ({ children }) => (
+    <h3 style={{
+      fontSize: "17px",
+      fontWeight: 700,
+      color: "#334155",
+      margin: "18px 0 8px"
+    }}>
+      {children}
+    </h3>
+  ),
+
+  p: ({ children }) => (
+    <p style={{
+      color: "#334155",
+      fontSize: "15px",
+      lineHeight: 1.8,
+      margin: "0 0 13px"
+    }}>
+      {children}
+    </p>
+  ),
+
+  ul: ({ children }) => (
+    <ul style={{
+      margin: "8px 0 18px",
+      paddingLeft: "24px",
+      display: "grid",
+      gap: "8px",
+      listStyleType: "disc"
+    }}>
+      {children}
+    </ul>
+  ),
+
+  ol: ({ children }) => (
+    <ol style={{
+      margin: "8px 0 18px",
+      paddingLeft: "24px",
+      display: "grid",
+      gap: "8px",
+      listStyleType: "decimal"
+    }}>
+      {children}
+    </ol>
+  ),
+
+  li: ({ children }) => (
+    <li style={{
+      color: "#334155",
+      fontSize: "15px",
+      lineHeight: 1.7,
+      paddingLeft: "3px"
+    }}>
+      {children}
+    </li>
+  ),
+
+  strong: ({ children }) => (
+    <strong style={{
+      color: "#1e3a8a",
+      fontWeight: 700
+    }}>
+      {children}
+    </strong>
+  ),
+
+  blockquote: ({ children }) => (
+    <blockquote style={{
+      margin: "16px 0",
+      padding: "12px 16px",
+      background: "#eff6ff",
+      borderLeft: "4px solid #3b82f6",
+      borderRadius: "0 10px 10px 0",
+      color: "#1e40af"
+    }}>
+      {children}
+    </blockquote>
+  ),
+
+  table: ({ children }) => (
+    <div style={{
+      width: "100%",
+      overflowX: "auto",
+      margin: "16px 0",
+      border: "1px solid #e2e8f0",
+      borderRadius: "10px"
+    }}>
+      <table style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        fontSize: "14px",
+        color: "#334155"
+      }}>
+        {children}
+      </table>
+    </div>
+  ),
+
+  thead: ({ children }) => (
+    <thead style={{ background: "#eff6ff" }}>
+      {children}
+    </thead>
+  ),
+
+  th: ({ children }) => (
+    <th style={{
+      padding: "12px",
+      textAlign: "left",
+      color: "#1e3a8a",
+      borderBottom: "1px solid #dbeafe"
+    }}>
+      {children}
+    </th>
+  ),
+
+  td: ({ children }) => (
+    <td style={{
+      padding: "11px 12px",
+      borderBottom: "1px solid #e2e8f0",
+      lineHeight: 1.6
+    }}>
+      {children}
+    </td>
+  ),
+
+  hr: () => (
+    <hr style={{
+      border: 0,
+      borderTop: "1px solid #e2e8f0",
+      margin: "20px 0"
+    }} />
+  ),
+
+  code: ({ children, className }) => {
+    const isBlock = Boolean(className);
+
+    return (
+      <code style={isBlock ? {
+        display: "block",
+        padding: "14px",
+        background: "#0f172a",
+        color: "#e2e8f0",
+        borderRadius: "9px",
+        overflowX: "auto",
+        fontSize: "13px",
+        lineHeight: 1.6
+      } : {
+        background: "#eff6ff",
+        color: "#1d4ed8",
+        borderRadius: "5px",
+        padding: "2px 6px",
+        fontSize: "0.9em"
+      }}>
+        {children}
+      </code>
+    );
+  },
+
+  pre: ({ children }) => (
+    <pre style={{
+      margin: "14px 0",
+      whiteSpace: "pre-wrap",
+      overflowX: "auto"
+    }}>
+      {children}
+    </pre>
+  ),
+
+  a: ({ children, href }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        color: "#2563eb",
+        textDecoration: "underline",
+        fontWeight: 600
+      }}
+    >
+      {children}
+    </a>
+  )
 };
 
 function AIAssistant() {
@@ -85,12 +295,11 @@ function AIAssistant() {
 
   const suggestions = [
     "What are the symptoms of diabetes?",
-    "What should I do if I have a fever?",
+    "Find me a cardiologist",
     "What are common symptoms of asthma?",
     "What is dengue?"
   ];
 
-  // Redirect to booking page with the selected doctor.
   const bookDoctor = (doctor) => {
     navigate("/appointments", {
       state: {
@@ -121,7 +330,6 @@ function AIAssistant() {
     ];
 
     try {
-      // Fetch actual doctor records for doctor lookups.
       if (isDoctorLookup(questionToSend)) {
         const response = await fetch(
           "http://127.0.0.1:8000/doctors/",
@@ -158,7 +366,6 @@ function AIAssistant() {
         return;
       }
 
-      // Healthcare questions and appointment requests.
       const response = await fetch(
         "http://127.0.0.1:8000/ai/chat",
         {
@@ -346,8 +553,25 @@ function AIAssistant() {
               </div>
             </div>
 
-            <div className="response-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {/* Decorated Markdown response */}
+            <div
+              className="response-content"
+              style={{
+                background: "#ffffff",
+                border: "1px solid #dbeafe",
+                borderRadius: "16px",
+                padding: "24px 28px",
+                marginTop: "20px",
+                color: "#334155",
+                lineHeight: 1.8,
+                overflowX: "auto",
+                boxShadow: "0 4px 16px rgba(15, 23, 42, 0.04)"
+              }}
+            >
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
                 {answer}
               </ReactMarkdown>
             </div>

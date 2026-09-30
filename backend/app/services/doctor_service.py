@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from sqlmodel import Session, select
-
+from app.models.user import User
 from app.models.doctor import Doctor
 from app.schemas.doctor import DoctorCreate, DoctorUpdate
 from app.models.patient import Patient
@@ -10,9 +10,31 @@ def create_doctor(
     doctor: DoctorCreate,
     session: Session
 ):
+    if doctor.user_id is not None:
+        user = session.get(User, doctor.user_id)
+
+        if not user or user.role != "doctor":
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid doctor user account"
+            )
+
+        existing_doctor = session.exec(
+            select(Doctor).where(
+                Doctor.user_id == doctor.user_id
+            )
+        ).first()
+
+        if existing_doctor:
+            raise HTTPException(
+                status_code=400,
+                detail="User is already linked to a doctor profile"
+            )
+
     new_doctor = Doctor(
         name=doctor.name,
-        specialization=doctor.specialization
+        specialization=doctor.specialization,
+        user_id=doctor.user_id
     )
 
     session.add(new_doctor)

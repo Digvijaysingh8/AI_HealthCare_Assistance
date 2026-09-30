@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlmodel import Session, select
 from datetime import date, datetime, timedelta
-
+from sqlalchemy import text
 from app.models.appointment import Appointment
 from app.models.patient import Patient
 from app.models.doctor import Doctor
@@ -59,13 +59,13 @@ def get_available_slots(
         appointment.appointment_time
         for appointment in existing_appointments
     }
+
     current_time = datetime.now().strftime("%H:%M")
     today = date.today().isoformat()
 
     slots = []
 
     for slot in all_slots:
-
         is_booked = slot in booked_slots
 
         is_past = (
@@ -80,64 +80,102 @@ def get_available_slots(
 
     return slots
 
+
 def create_appointment(
     appointment: AppointmentCreate,
     user_id: int,
     session: Session
 ):
-    patient = session.exec(
-        select(Patient).where(
-            Patient.user_id == user_id
+    try:
+        # Start a write transaction before checking availability.
+        session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+
+        patient = session.exec(
+            select(Patient).where(
+                Patient.user_id == user_id
+            )
+        ).first()
+
+        if not patient:
+            raise HTTPException(
+                status_code=404,
+                detail="Patient profile not found"
+            )
+
+        doctor = session.get(Doctor, appointment.doctor_id)
+
+        if not doctor:
+            raise HTTPException(
+                status_code=404,
+                detail="Doctor not found"
+            )
+
+        if appointment.appointment_date < date.today():
+            raise HTTPException(
+                status_code=400,
+                detail="Appointment date cannot be in the past"
+            )
+
+        if (
+            appointment.appointment_date == date.today()
+            and appointment.appointment_time.replace(tzinfo=None)
+            <= datetime.now().time().replace(tzinfo=None)
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Appointment time must be in the future"
+            )
+
+        requested_time = appointment.appointment_time.strftime("%H:%M")
+        requested_date = appointment.appointment_date.isoformat()
+
+        existing_appointment = session.exec(
+            select(Appointment).where(
+                Appointment.doctor_id == appointment.doctor_id,
+                Appointment.appointment_date == requested_date,
+                Appointment.appointment_time == requested_time
+            )
+        ).first()
+
+        if existing_appointment:
+            raise HTTPException(
+                status_code=400,
+                detail="Doctor already has an appointment at this date and time"
+            )
+
+        available_slots = get_available_slots(
+            appointment.doctor_id,
+            appointment.appointment_date,
+            session
         )
-    ).first()
 
-    if not patient:
-        raise HTTPException(
-            status_code=404,
-            detail="Patient profile not found"
+        is_available = any(
+            slot["time"] == requested_time and slot["available"]
+            for slot in available_slots
         )
 
-    doctor = session.get(Doctor, appointment.doctor_id)
+        if not is_available:
+            raise HTTPException(
+                status_code=400,
+                detail="Selected appointment slot is unavailable"
+            )
 
-    if not doctor:
-        raise HTTPException(
-            status_code=404,
-            detail="Doctor not found"
+        new_appointment = Appointment(
+            patient_id=patient.id,
+            doctor_id=appointment.doctor_id,
+            appointment_date=requested_date,
+            appointment_time=requested_time
         )
 
-    if appointment.appointment_date < date.today():
-        raise HTTPException(
-            status_code=400,
-            detail="Appointment date cannot be in the past"
-        )
+        session.add(new_appointment)
+        session.commit()
+        session.refresh(new_appointment)
 
-    existing_appointment = session.exec(
-        select(Appointment).where(
-            Appointment.doctor_id == appointment.doctor_id,
-            Appointment.appointment_date == appointment.appointment_date.isoformat(),
-            Appointment.appointment_time == appointment.appointment_time.strftime("%H:%M")
-        )
-    ).first()
+        return new_appointment
 
-    if existing_appointment:
-        raise HTTPException(
-            status_code=400,
-            detail="Doctor already has an appointment at this date and time"
-        )
-
-    new_appointment = Appointment(
-        patient_id=patient.id,
-        doctor_id=appointment.doctor_id,
-        appointment_date=appointment.appointment_date.isoformat(),
-        appointment_time=appointment.appointment_time.strftime("%H:%M")
-    )
-
-    session.add(new_appointment)
-    session.commit()
-    session.refresh(new_appointment)
-
-    return new_appointment
-
+    except Exception:
+        session.rollback()
+        raise
 
 def update_appointment(
     appointment_id: int,

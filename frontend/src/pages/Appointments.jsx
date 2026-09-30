@@ -5,6 +5,8 @@ import DatePicker from "react-datepicker";
 
 import "react-datepicker/dist/react-datepicker.css";
 
+const API_URL = "http://127.0.0.1:8000";
+
 function Appointments() {
   const location = useLocation();
 
@@ -16,9 +18,7 @@ function Appointments() {
     });
   }, []);
 
-  const selectedDoctorFromCard =
-    location.state?.doctorId || "";
-
+  const selectedDoctorFromCard = location.state?.doctorId || "";
   const selectedDoctorNameFromCard =
     location.state?.doctorName || "";
 
@@ -28,9 +28,8 @@ function Appointments() {
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   const [doctors, setDoctors] = useState([]);
-
   const [doctorId, setDoctorId] = useState(
-    selectedDoctorFromCard
+    String(selectedDoctorFromCard)
   );
 
   const [patientId, setPatientId] = useState("");
@@ -41,16 +40,43 @@ function Appointments() {
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
+  const [error, setError] = useState("");
 
-  // Fetch logged-in user, patient and doctors.
+  // Fetch the logged-in patient and available doctors.
   const fetchData = async () => {
     setLoading(true);
+    setError("");
 
     try {
       const token = localStorage.getItem("access_token");
 
-      const userResponse = await fetch(
-        "http://127.0.0.1:8000/auth/me",
+      if (!token) {
+        throw new Error("Please log in to book an appointment.");
+      }
+
+      const userResponse = await fetch(`${API_URL}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!userResponse.ok) {
+        const data = await userResponse.json().catch(() => ({}));
+        throw new Error(
+          data.detail ||
+            `Failed to fetch logged-in user (${userResponse.status})`
+        );
+      }
+
+      const userData = await userResponse.json();
+
+      if (userData.role !== "patient") {
+        throw new Error("Only patients can book appointments.");
+      }
+
+      // Fetch only the authenticated patient's profile.
+      const patientResponse = await fetch(
+        `${API_URL}/patients/me`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -58,46 +84,32 @@ function Appointments() {
         }
       );
 
-      if (!userResponse.ok) {
-        throw new Error("Failed to fetch logged-in user");
+      if (!patientResponse.ok) {
+        const data = await patientResponse.json().catch(() => ({}));
+        throw new Error(
+          data.detail ||
+            `Failed to fetch patient profile (${patientResponse.status})`
+        );
       }
 
-      const userData = await userResponse.json();
+      const loggedInPatient = await patientResponse.json();
 
-      if (userData.role === "patient") {
-        const patientsResponse = await fetch(
-          "http://127.0.0.1:8000/patients/",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!patientsResponse.ok) {
-          throw new Error("Failed to fetch patients");
-        }
-
-        const patientsData = await patientsResponse.json();
-
-        const loggedInPatient = patientsData.find(
-          (patient) => patient.user_id === userData.id
-        );
-
-        if (!loggedInPatient) {
-          throw new Error("Patient profile not found");
-        }
-
-        setCurrentPatient(loggedInPatient);
-        setPatientId(String(loggedInPatient.id));
+      if (!loggedInPatient?.id) {
+        throw new Error("Patient profile not found.");
       }
 
-      const doctorsResponse = await fetch(
-        "http://127.0.0.1:8000/doctors/"
-      );
+      setCurrentPatient(loggedInPatient);
+      setPatientId(String(loggedInPatient.id));
+
+      // Fetch doctors.
+      const doctorsResponse = await fetch(`${API_URL}/doctors/`);
 
       if (!doctorsResponse.ok) {
-        throw new Error("Failed to fetch doctors");
+        const data = await doctorsResponse.json().catch(() => ({}));
+        throw new Error(
+          data.detail ||
+            `Failed to fetch doctors (${doctorsResponse.status})`
+        );
       }
 
       const doctorsData = await doctorsResponse.json();
@@ -116,7 +128,7 @@ function Appointments() {
       }
     } catch (error) {
       console.error("Error fetching appointment data:", error);
-      alert(error.message);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -139,7 +151,7 @@ function Appointments() {
 
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/appointments/available-slots/${doctorId}?appointment_date=${appointmentDate}`
+          `${API_URL}/appointments/available-slots/${doctorId}?appointment_date=${appointmentDate}`
         );
 
         const data = await response.json();
@@ -174,7 +186,7 @@ function Appointments() {
     setAppointmentDate("");
     setAppointmentTime("");
 
-    if (userRole === "patient" && currentPatient) {
+    if (currentPatient) {
       setPatientId(String(currentPatient.id));
     } else {
       setPatientId("");
@@ -192,8 +204,8 @@ function Appointments() {
       return;
     }
 
-    if (userRole === "patient" && !currentPatient) {
-      alert("Patient profile not found.");
+    if (!currentPatient) {
+      alert("Patient profile not found. Please refresh the page.");
       return;
     }
 
@@ -202,18 +214,12 @@ function Appointments() {
     try {
       const token = localStorage.getItem("access_token");
 
-      const selectedPatientId =
-        userRole === "patient"
-          ? currentPatient.id
-          : patientId;
-
-      if (!selectedPatientId) {
-        alert("Please select a patient.");
-        return;
+      if (!token) {
+        throw new Error("Please log in again.");
       }
 
       const appointmentResponse = await fetch(
-        "http://127.0.0.1:8000/appointments/",
+        `${API_URL}/appointments/`,
         {
           method: "POST",
           headers: {
@@ -221,7 +227,7 @@ function Appointments() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            patient_id: Number(selectedPatientId),
+            patient_id: Number(currentPatient.id),
             doctor_id: Number(doctorId),
             appointment_date: appointmentDate,
             appointment_time: appointmentTime,
@@ -238,9 +244,9 @@ function Appointments() {
       }
 
       alert("Appointment booked successfully!");
-
       resetForm();
     } catch (error) {
+      console.error("Error booking appointment:", error);
       alert(error.message);
     } finally {
       setBooking(false);
@@ -251,165 +257,197 @@ function Appointments() {
     (doctor) => String(doctor.id) === String(doctorId)
   );
 
+  if (userRole !== "patient") {
+    return (
+      <main className="page">
+        <p>Only patients can book appointments.</p>
+      </main>
+    );
+  }
+
   return (
     <main className="page">
-      {userRole === "patient" && (
-        <>
-          <h2>Book an Appointment</h2>
+      <h2>Book an Appointment</h2>
 
-          <p>
-            Schedule a consultation with one of our available doctors.
-          </p>
+      <p>
+        Schedule a consultation with one of our available doctors.
+      </p>
 
-          <form
-            className="appointment-form"
-            onSubmit={bookAppointment}
+      {error && (
+        <div
+          role="alert"
+          style={{
+            color: "#b91c1c",
+            backgroundColor: "#fee2e2",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "16px",
+          }}
+        >
+          <strong>Error:</strong> {error}
+          <button
+            type="button"
+            onClick={fetchData}
+            disabled={loading}
+            style={{ marginLeft: "12px" }}
           >
-            {/* Patient Information */}
-            <div className="appointment-section-title">
-              <h3>Patient Information</h3>
-            </div>
-
-            <div className="form-group">
-              <label>Patient</label>
-
-              <input
-                type="text"
-                value={
-                  currentPatient
-                    ? currentPatient.name
-                    : loading
-                    ? "Loading patient..."
-                    : "Patient unavailable"
-                }
-                readOnly
-              />
-            </div>
-
-            {/* Appointment Details */}
-            <div className="appointment-section-title">
-              <h3>Appointment Details</h3>
-            </div>
-
-            {/* Doctor */}
-            <div className="form-group">
-              <label>Doctor</label>
-
-              {selectedDoctorFromCard ? (
-                <input
-                  type="text"
-                  value={
-                    selectedDoctor?.name ||
-                    selectedDoctorNameFromCard ||
-                    "Loading doctor..."
-                  }
-                  readOnly
-                />
-              ) : (
-                <select
-                  value={doctorId}
-                  onChange={(e) => setDoctorId(e.target.value)}
-                >
-                  <option value="">Select Doctor</option>
-
-                  {doctors.map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
-                      {doctor.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Date */}
-            <div className="form-group">
-              <label>Appointment Date</label>
-
-              <DatePicker
-                selected={
-                  appointmentDate
-                    ? new Date(`${appointmentDate}T00:00:00`)
-                    : null
-                }
-                onChange={(selectedDate) => {
-                  if (!selectedDate) {
-                    setAppointmentDate("");
-                    return;
-                  }
-
-                  const year = selectedDate.getFullYear();
-                  const month = String(
-                    selectedDate.getMonth() + 1
-                  ).padStart(2, "0");
-                  const day = String(
-                    selectedDate.getDate()
-                  ).padStart(2, "0");
-
-                  setAppointmentDate(`${year}-${month}-${day}`);
-                }}
-                minDate={new Date()}
-                dateFormat="dd-MM-yyyy"
-                placeholderText="Select appointment date"
-                className="appointment-date-picker"
-              />
-            </div>
-
-            {/* Time */}
-            <div className="form-group">
-              <label>Appointment Time</label>
-
-              {!doctorId || !appointmentDate ? (
-                <p>Please select a doctor and date first.</p>
-              ) : loadingSlots ? (
-                <p>Loading available slots...</p>
-              ) : availableSlots.length === 0 ? (
-                <p>No available slots for this date.</p>
-              ) : (
-                <div className="time-slots">
-                  {availableSlots.map((slot) => (
-                    <button
-                      type="button"
-                      key={slot.time}
-                      disabled={!slot.available}
-                      className={
-                        !slot.available
-                          ? "time-slot booked"
-                          : appointmentTime === slot.time
-                          ? "time-slot selected"
-                          : "time-slot"
-                      }
-                      onClick={() => {
-                        if (slot.available) {
-                          setAppointmentTime(slot.time);
-                        }
-                      }}
-                    >
-                      {slot.time}
-
-                      {!slot.available && (
-                        <span className="booked-mark">✕</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Book Button */}
-            <button
-              type="submit"
-              disabled={
-                booking ||
-                loading ||
-                loadingSlots ||
-                !currentPatient
-              }
-            >
-              {booking ? "Booking..." : "Book Appointment"}
-            </button>
-          </form>
-        </>
+            {loading ? "Loading..." : "Retry"}
+          </button>
+        </div>
       )}
+
+      <form
+        className="appointment-form"
+        onSubmit={bookAppointment}
+      >
+        {/* Patient Information */}
+        <div className="appointment-section-title">
+          <h3>Patient Information</h3>
+        </div>
+
+        <div className="form-group">
+          <label>Patient</label>
+
+          <input
+            type="text"
+            value={
+              currentPatient
+                ? currentPatient.name
+                : loading
+                ? "Loading patient..."
+                : "Patient unavailable"
+            }
+            readOnly
+          />
+        </div>
+
+        {/* Appointment Details */}
+        <div className="appointment-section-title">
+          <h3>Appointment Details</h3>
+        </div>
+
+        {/* Doctor */}
+        <div className="form-group">
+          <label>Doctor</label>
+
+          {selectedDoctorFromCard ? (
+            <input
+              type="text"
+              value={
+                selectedDoctor?.name ||
+                selectedDoctorNameFromCard ||
+                "Loading doctor..."
+              }
+              readOnly
+            />
+          ) : (
+            <select
+              value={doctorId}
+              onChange={(e) => setDoctorId(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">Select Doctor</option>
+
+              {doctors.map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {doctor.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Appointment Date */}
+        <div className="form-group">
+          <label>Appointment Date</label>
+
+          <DatePicker
+            selected={
+              appointmentDate
+                ? new Date(`${appointmentDate}T00:00:00`)
+                : null
+            }
+            onChange={(selectedDate) => {
+              if (!selectedDate) {
+                setAppointmentDate("");
+                setAppointmentTime("");
+                return;
+              }
+
+              const year = selectedDate.getFullYear();
+              const month = String(
+                selectedDate.getMonth() + 1
+              ).padStart(2, "0");
+              const day = String(
+                selectedDate.getDate()
+              ).padStart(2, "0");
+
+              setAppointmentDate(`${year}-${month}-${day}`);
+            }}
+            minDate={new Date()}
+            dateFormat="dd-MM-yyyy"
+            placeholderText="Select appointment date"
+            className="appointment-date-picker"
+          />
+        </div>
+
+        {/* Appointment Time */}
+        <div className="form-group">
+          <label>Appointment Time</label>
+
+          {!doctorId || !appointmentDate ? (
+            <p>Please select a doctor and date first.</p>
+          ) : loadingSlots ? (
+            <p>Loading available slots...</p>
+          ) : availableSlots.length === 0 ? (
+            <p>No available slots for this date.</p>
+          ) : (
+            <div className="time-slots">
+              {availableSlots.map((slot) => (
+                <button
+                  type="button"
+                  key={slot.time}
+                  disabled={!slot.available}
+                  className={
+                    !slot.available
+                      ? "time-slot booked"
+                      : appointmentTime === slot.time
+                      ? "time-slot selected"
+                      : "time-slot"
+                  }
+                  onClick={() => {
+                    if (slot.available) {
+                      setAppointmentTime(slot.time);
+                    }
+                  }}
+                >
+                  {slot.time}
+
+                  {!slot.available && (
+                    <span className="booked-mark">✕</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Book Button */}
+        <button
+          type="submit"
+          disabled={
+            booking ||
+            loading ||
+            loadingSlots ||
+            !currentPatient ||
+            !doctorId ||
+            !appointmentDate ||
+            !appointmentTime
+          }
+        >
+          {booking ? "Booking..." : "Book Appointment"}
+        </button>
+      </form>
     </main>
   );
 }

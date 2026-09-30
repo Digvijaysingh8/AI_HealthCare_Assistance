@@ -8,3 +8,4 @@ class AgentState(MessagesState):
     pending_booking: dict | None
     thread_id: str | None
     requires_confirmation: bool
+    doctors: list[dict]

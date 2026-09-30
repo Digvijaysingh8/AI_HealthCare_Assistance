@@ -419,8 +419,10 @@ body {
    ========================================= */
 
 .landing-page {
-  height: calc(100vh - 147px);
-  min-height: 0;
+  /* The landing page has no logged-in navbar, so it must fill the viewport. */
+  height: auto;
+  min-height: 100vh;
+  min-height: 100svh;
 
   display: flex;
   align-items: center;
@@ -1330,17 +1332,18 @@ body {
 }
 
 .response-content {
-  max-height: 420px;
-  overflow-y: auto;
+  max-height: none;
+  height: auto;
+  overflow: visible;
   padding: 20px 22px;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   background: #fff;
   color: #334155;
   font-size: 15px;
-  line-height: 1.75;
+  line-height: 1.6;
   text-align: left;
-  white-space: pre-wrap;
+  white-space: normal;
   overflow-wrap: anywhere;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }
@@ -1371,21 +1374,23 @@ body {
 .response-content h4 { font-size: 15px; }
 
 .response-content p {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: #334155;
+  line-height: 1.6;
   text-align: left;
 }
 
 .response-content ul,
 .response-content ol {
-  margin: 8px 0 14px;
+  margin: 8px 0 12px;
   padding-left: 24px;
   text-align: left;
 }
 
 .response-content li {
-  margin: 4px 0;
+  margin: 3px 0;
   padding-left: 3px;
+  line-height: 1.6;
 }
 
 .response-content strong,
@@ -1524,7 +1529,9 @@ body {
   .response-content {
     padding: 16px;
     font-size: 14px;
-    max-height: 400px;
+    max-height: none;
+    height: auto;
+    overflow: visible;
   }
 }
 
@@ -3137,7 +3144,8 @@ body {
 
 }
 .response-content p {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
+  line-height: 1.6;
 }
 
 .response-content p:last-child {
@@ -3148,19 +3156,20 @@ body {
 .response-content h2,
 .response-content h3 {
   color: #1e3a8a;
-  margin: 18px 0 10px;
+  margin: 16px 0 8px;
   font-weight: 700;
 }
 
 .response-content ul,
 .response-content ol {
   padding-left: 24px;
-  margin: 12px 0 18px;
+  margin: 8px 0 12px;
 }
 
 .response-content li {
-  margin-bottom: 8px;
-  padding-left: 4px;
+  margin-bottom: 3px;
+  padding-left: 3px;
+  line-height: 1.6;
 }
 
 .response-content strong {
@@ -3267,3 +3276,4 @@ body {
     width: 100%;
   }
 }
+
