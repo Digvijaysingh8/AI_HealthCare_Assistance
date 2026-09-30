@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
@@ -80,3 +80,26 @@ def home():
     return {
         "message": "AI Healthcare Assistant API is running"
     }
+
+
+@app.get("/health")
+def health():
+    """Liveness plus a real database round-trip.
+
+    The frontend polls this endpoint, so it reports connectivity problems
+    here instead of surfacing them as opaque failed requests.
+    """
+    from sqlalchemy import text
+
+    from app.database.database import engine
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as exc:
+        # 503 so a load balancer or the frontend can react to it.
+        raise HTTPException(
+            status_code=503,
+            detail=f"Database unavailable: {exc}"
+        )

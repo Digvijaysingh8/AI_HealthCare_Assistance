@@ -54,11 +54,24 @@ function Appointments() {
         throw new Error("Please log in to book an appointment.");
       }
 
-      const userResponse = await fetch(`${API_URL}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Fire the independent requests together instead of one after another.
+      // The three calls do not depend on each other's result, so awaiting
+      // them sequentially stacked three round-trips (and their DB latency)
+      // end to end and made the page feel slow to load.
+      const authHeaders = {
+        Authorization: `Bearer ${token}`,
+      };
+
+      const [userResponse, patientResponse, doctorsResponse] =
+        await Promise.all([
+          fetch(`${API_URL}/auth/me`, {
+            headers: authHeaders,
+          }),
+          fetch(`${API_URL}/patients/me`, {
+            headers: authHeaders,
+          }),
+          fetch(`${API_URL}/doctors/`),
+        ]);
 
       if (!userResponse.ok) {
         const data = await userResponse.json().catch(() => ({}));
@@ -73,16 +86,6 @@ function Appointments() {
       if (userData.role !== "patient") {
         throw new Error("Only patients can book appointments.");
       }
-
-      // Fetch only the authenticated patient's profile.
-      const patientResponse = await fetch(
-        `${API_URL}/patients/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
 
       if (!patientResponse.ok) {
         const data = await patientResponse.json().catch(() => ({}));
@@ -100,9 +103,6 @@ function Appointments() {
 
       setCurrentPatient(loggedInPatient);
       setPatientId(String(loggedInPatient.id));
-
-      // Fetch doctors.
-      const doctorsResponse = await fetch(`${API_URL}/doctors/`);
 
       if (!doctorsResponse.ok) {
         const data = await doctorsResponse.json().catch(() => ({}));
