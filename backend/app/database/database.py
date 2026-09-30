@@ -62,8 +62,31 @@ def _resolve_database_url():
 
 DATABASE_URL, CONNECT_ARGS = _resolve_database_url()
 
-_safe_url = DATABASE_URL.split("@")[-1]
-print("Using database:", _safe_url if DATABASE_URL != DEFAULT_SQLITE_URL else "SQLite", flush=True)
+if DATABASE_URL == DEFAULT_SQLITE_URL:
+    # A silent fallback to SQLite is indistinguishable from "working" until
+    # you notice your MySQL data is missing. Make it loud instead.
+    width = 66
+    lines = [
+        "WARNING: DATABASE_URI is not set.",
+        "",
+        "Falling back to the local SQLite file, which is EMPTY on any",
+        "host other than this machine. Set DATABASE_URI in the",
+        "environment to point at your real database.",
+    ]
+    print(
+        "\n"
+        + "\n".join(
+            ["#" * width]
+            + [("# %s" % line).ljust(width - 1) + "#" for line in lines]
+            + ["#" * width]
+        )
+        + "\n",
+        flush=True,
+    )
+else:
+    # Host/database only; the password must never reach the logs.
+    url = make_url(DATABASE_URL)
+    print(f"Using database: {url.host}/{url.database}", flush=True)
 
 
 engine = create_engine(

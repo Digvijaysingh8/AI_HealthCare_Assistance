@@ -1,5 +1,5 @@
 import os
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -32,11 +32,25 @@ async def lifespan(app: FastAPI):
 
     print("Skipping RAG warmup to conserve memory.", flush=True)
 
-    async with AsyncSqliteSaver.from_conn_string(
-        str(CHECKPOINT_DB)
-    ) as checkpointer:
-        await checkpointer.setup()
-        set_appointment_checkpointer(checkpointer)
+    # The checkpointer writes a SQLite file next to the app. If that location
+    # is not writable (read-only or ephemeral container filesystem), let the
+    # API still come up rather than dying before uvicorn binds a port.
+    # The try covers setup only; an error while serving must still propagate.
+    async with AsyncExitStack() as stack:
+        try:
+            CHECKPOINT_DB.parent.mkdir(parents=True, exist_ok=True)
+
+            checkpointer = await stack.enter_async_context(
+                AsyncSqliteSaver.from_conn_string(str(CHECKPOINT_DB))
+            )
+            await checkpointer.setup()
+            set_appointment_checkpointer(checkpointer)
+        except Exception as exc:
+            print(
+                f"WARNING: appointment checkpointer unavailable ({exc}). "
+                "AI assistant features will not work; the rest of the API is up.",
+                flush=True,
+            )
 
         try:
             yield
@@ -54,10 +68,17 @@ frontend_url = os.getenv(
     "http://localhost:5173"
 )
 
+# FRONTEND_URL may be a comma-separated list so staging and production
+# origins can both be allowed without redeploying.
+allowed_origins = [
+    origin.strip()
+    for origin in frontend_url.split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        frontend_url,
+    allow_origins=allowed_origins + [
         "http://localhost:5173",
         "http://127.0.0.1:5173"
     ],
@@ -91,15 +112,37 @@ def health():
     """
     from sqlalchemy import text
 
-    from app.database.database import engine
+    from app.database.database import (
+        DEFAULT_SQLITE_URL,
+        DATABASE_URL,
+        engine,
+    )
+
+    # A SQLite fallback connects fine, so a bare "connected" would read as
+    # healthy while actually serving an empty file with none of the MySQL
+    # data. Name the backend so that case is obvious.
+    on_sqlite_fallback = DATABASE_URL == DEFAULT_SQLITE_URL
+    dialect = "sqlite-fallback" if on_sqlite_fallback \
+        else engine.dialect.name
 
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return {"status": "ok", "database": "connected"}
     except Exception as exc:
         # 503 so a load balancer or the frontend can react to it.
         raise HTTPException(
             status_code=503,
             detail=f"Database unavailable: {exc}"
         )
+
+    if on_sqlite_fallback:
+        # Still 200 so the process is not killed by a health check, but the
+        # body says the data is not the real database.
+        return {
+            "status": "degraded",
+            "database": dialect,
+            "detail": "DATABASE_URI is not set; using an empty local "
+                      "SQLite file instead of the real database.",
+        }
+
+    return {"status": "ok", "database": dialect}

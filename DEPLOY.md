@@ -1,0 +1,84 @@
+# Deploying to Render
+
+## The error you hit
+
+```
+==> Port scan timeout reached, no open ports detected.
+```
+
+Render scans for a listening socket shortly after start. If nothing answers,
+it assumes the service never came up.
+
+Two separate things had to be true, and only one was obvious:
+
+1. **The app must bind `0.0.0.0` on `$PORT`.** Render injects `PORT`
+   (10000 on the free plan). Binding the usual local `127.0.0.1:8000` binds
+   an address Render cannot reach.
+2. **The app must not crash during import.** This was the actual cause. `.env`
+   is gitignored, so it is never deployed, so `SECRET_KEY` was unset, so
+   `app/auth/jwt.py` raised `RuntimeError` and the process died before uvicorn
+   ever opened a socket. A crash during import and a wrong bind address
+   produce the *identical* error message, which is why fixing only the bind
+   would not have helped.
+
+The app now survives a missing `SECRET_KEY` and logs a loud warning, and
+`/health` distinguishes a real database from a silent SQLite fallback.
+
+## Backend
+
+If the service already exists in your Render dashboard, paste these in and
+ignore `render.yaml`. It only applies when Render creates the service.
+
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health Check Path | `/health` |
+
+### Environment variables
+
+Set these in **Render > Environment**. They cannot come from `.env`, because
+that file is gitignored and never deployed. Do not commit them.
+
+| Key | Value |
+|---|---|
+| `SECRET_KEY` | Generate one: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+| `DATABASE_URI` | Your Aiven MySQL URL. `?ssl-mode=REQUIRED` is fine — the app strips CLI-only params before connecting |
+| `GROQ_API_KEY` | From <https://console.groq.com/keys> |
+| `FRONTEND_URL` | Origin of the deployed frontend, e.g. `https://odasha-web.onrender.com`. Comma-separate to allow several |
+
+`SECRET_KEY` must be set for real use. Without it the app still boots, but it
+generates a random key per process: every restart invalidates all issued
+tokens, and separate instances cannot verify each other's.
+
+`DATABASE_URI` matters just as much. Unset, the app silently uses a local
+SQLite file that is empty on Render's filesystem, so you get a healthy-looking
+service serving no data. `/health` reports this as
+`{"status":"degraded","database":"sqlite-fallback"}`.
+
+## Frontend
+
+`VITE_API_URL` is inlined into the bundle at **build** time. Changing it later
+needs a rebuild, not just a redeploy. Set it in the frontend service's
+environment before the build runs.
+
+Build with `npm ci && npm run build`, publish `./dist`, and rewrite all paths
+to `/index.html` — without that, refreshing on `/appointments` returns 404,
+since `react-router` serves those paths client-side.
+
+If the frontend is on a different domain from the backend, `FRONTEND_URL` must
+match it exactly (scheme, host, and port) or the browser blocks every request
+as a CORS failure. With no `FRONTEND_URL` set, only `localhost:5173` is
+allowed.
+
+## Known limitations
+
+- **The SQLite checkpoint file is ephemeral.** `appointment_checkpoints.sqlite`
+  is written next to the app on local disk. On Render it is wiped on every
+  deploy, so in-flight AI conversations do not survive. The rest of the API
+  is unaffected — startup logs a warning if that file cannot be written.
+- **The free plan sleeps.** Cold starts make the first request take ~50s.
+- **Aiven connection pooling.** Each Render instance opens its own pool.
+- `tests/test_llm.py` cannot run on Windows here: Application Control blocks
+  an sklearn DLL. Unrelated to deployment.

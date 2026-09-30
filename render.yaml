@@ -1,0 +1,41 @@
+# Render deployment blueprint.
+#
+# NOTE: this declares a NEW service named odasaai-healthcare-assistance. If
+# you already have that service created in the dashboard, Render will NOT
+# apply this file to it -- just paste the build/start commands and the env
+# vars from below into the existing service instead.
+#
+# Required secrets: Render cannot read them from .env, because .env is
+# gitignored and therefore never deployed. Set each one under
+# Environment > Environment Variables in the Render dashboard:
+#
+#   SECRET_KEY    python -c "import secrets; print(secrets.token_urlsafe(48))"
+#   DATABASE_URI  your Aiven MySQL URL. ?ssl-mode=REQUIRED is fine, the app
+#                 strips CLI-only query params before connecting.
+#   GROQ_API_KEY  from https://console.groq.com/keys
+#   FRONTEND_URL  origin of the deployed frontend. Comma-separate to allow
+#                 several at once. Must match the frontend exactly or the
+#                 browser blocks every request as a CORS failure.
+services:
+  - type: web
+    name: odasaai-healthcare-assistance
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Render injects PORT (default 10000). The service must bind 0.0.0.0 on
+    # that value. Binding 127.0.0.1:8000 instead is what produces
+    # "Port scan timeout reached, no open ports detected".
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.11"
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URI
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
