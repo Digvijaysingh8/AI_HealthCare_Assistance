@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-
+import { API_URL } from "../api";
 const normalize = (value = "") =>
   String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -332,7 +332,7 @@ function AIAssistant() {
     try {
       if (isDoctorLookup(questionToSend)) {
         const response = await fetch(
-          "http://127.0.0.1:8000/doctors/",
+          `${API_URL}/doctors/`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("access_token")}`
@@ -367,7 +367,7 @@ function AIAssistant() {
       }
 
       const response = await fetch(
-        "http://127.0.0.1:8000/ai/chat",
+        `${API_URL}/ai/chat`,
         {
           method: "POST",
           headers: {
@@ -417,7 +417,7 @@ function AIAssistant() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/ai/chat",
+        `${API_URL}/ai/chat`,
         {
           method: "POST",
           headers: {

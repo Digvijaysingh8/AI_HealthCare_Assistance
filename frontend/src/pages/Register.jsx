@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_URL } from "../api";
 import {
   Link,
   useNavigate
@@ -26,7 +27,7 @@ function Register() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/auth/register",
+        `${API_URL}/auth/register`,
         {
           method: "POST",
 

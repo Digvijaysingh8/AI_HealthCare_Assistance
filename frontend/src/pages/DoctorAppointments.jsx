@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-
+import { API_URL } from "../api";
 function DoctorAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +12,7 @@ function DoctorAppointments() {
 
       try {
         const response = await fetch(
-          "http://127.0.0.1:8000/appointments/my-doctor",
+          `${API_URL}/appointments/my-doctor`,
           {
             headers: {
               Authorization: `Bearer ${token}`

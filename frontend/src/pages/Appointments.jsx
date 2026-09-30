@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import DatePicker from "react-datepicker";
-
+import { API_URL } from "../api";
 import "react-datepicker/dist/react-datepicker.css";
 
-const API_URL = "http://127.0.0.1:8000";
+
 
 function Appointments() {
   const location = useLocation();

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import { API_URL } from "../api";
 
 function Patients() {
 
@@ -19,7 +19,7 @@ function Patients() {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8000/patients/"
+        `${API_URL}/patients/`
       );
 
       const data = await response.json();
@@ -74,7 +74,7 @@ function Patients() {
       // Update existing patient
 
       response = await fetch(
-        `http://127.0.0.1:8000/patients/${editingId}`,
+        `${API_URL}/patients/${editingId}`,
         {
           method: "PUT",
 
@@ -95,7 +95,7 @@ function Patients() {
       // Create new patient
 
       response = await fetch(
-        "http://127.0.0.1:8000/patients/",
+        `${API_URL}/patients/`,
         {
           method: "POST",
 
@@ -165,7 +165,7 @@ const deletePatient = async (patientId) => {
   try {
 
     const response = await fetch(
-      `http://127.0.0.1:8000/patients/${patientId}`,
+      `${API_URL}/patients/${patientId}`,
       {
         method: "DELETE"
       }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { API_URL } from "../api";
 function Doctors() {
   const navigate = useNavigate();
 
@@ -186,7 +186,7 @@ function Doctors() {
       try {
 
         const response = await fetch(
-          "http://127.0.0.1:8000/doctors/"
+          `${API_URL}/doctors/`
         );
 
         const data = await response.json();
