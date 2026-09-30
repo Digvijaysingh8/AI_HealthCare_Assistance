@@ -14,12 +14,13 @@ from app.routes.departments import router as department_router
 from app.routes.appointments import router as appointment_router
 from app.routes import ai
 from app.routes import auth
-from app.agent.graph import close_mcp_agents, warmup_rag
+from app.agent.graph import close_mcp_agents
 
 CHECKPOINT_DB = (
     Path(__file__).resolve().parents[1]
     / "appointment_checkpoints.sqlite"
 )
+
 
 
 
@@ -29,9 +30,7 @@ async def lifespan(app: FastAPI):
 
     create_db_and_tables()
 
-    print("Starting RAG warmup...", flush=True)
-    warmup_rag()
-    print("RAG warmup finished.", flush=True)
+    print("Skipping RAG warmup to conserve memory.", flush=True)
 
     async with AsyncSqliteSaver.from_conn_string(
         str(CHECKPOINT_DB)
@@ -43,7 +42,6 @@ async def lifespan(app: FastAPI):
             yield
         finally:
             await close_mcp_agents()
-
 
 app = FastAPI(
     title="AI Healthcare Assistant",
