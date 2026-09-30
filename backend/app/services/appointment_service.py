@@ -87,8 +87,22 @@ def create_appointment(
     session: Session
 ):
     try:
-        # Start a write transaction before checking availability.
-        session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+        # Take a row-level lock on the doctor before checking availability so
+        # two concurrent bookings cannot claim the same slot.
+        #
+        # This must stay dialect-portable:
+        #   - FOR UPDATE locks the row on MySQL/Postgres and is silently
+        #     dropped by the SQLite dialect (no row-level locking there).
+        #   - The previous `BEGIN IMMEDIATE` was SQLite-only and made MySQL
+        #     return a syntax error (1064), which surfaced to the browser as
+        #     a 500 without CORS headers.
+        #
+        # SQLAlchemy opens the transaction implicitly on the first statement,
+        # which is what FOR UPDATE needs in order to take effect.
+        session.exec(
+            select(Doctor.id).where(Doctor.id == appointment.doctor_id)
+            .with_for_update()
+        ).first()
 
         patient = session.exec(
             select(Patient).where(
@@ -129,12 +143,17 @@ def create_appointment(
         requested_time = appointment.appointment_time.strftime("%H:%M")
         requested_date = appointment.appointment_date.isoformat()
 
+        # This must be a locking read. FastAPI hands the same Session to the
+        # auth dependency and this function, so the transaction (and under
+        # MySQL's REPEATABLE READ its snapshot) is already open by the time we
+        # get here. A plain SELECT would re-read that stale snapshot and miss a
+        # row committed by a competing booking.
         existing_appointment = session.exec(
             select(Appointment).where(
                 Appointment.doctor_id == appointment.doctor_id,
                 Appointment.appointment_date == requested_date,
                 Appointment.appointment_time == requested_time
-            )
+            ).with_for_update()
         ).first()
 
         if existing_appointment:
