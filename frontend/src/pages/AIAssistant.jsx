@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { API_URL } from "../api";
+import { API_URL, apiFetch } from "../api";
 const normalize = (value = "") =>
   String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -366,27 +366,16 @@ function AIAssistant() {
         return;
       }
 
-      const response = await fetch(
-        `${API_URL}/ai/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`
-          },
-          body: JSON.stringify({
-            question: questionToSend
-          })
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.detail || "Failed to get AI response"
-        );
-      }
+      const data = await apiFetch("/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`
+        },
+        body: JSON.stringify({
+          question: questionToSend
+        })
+      });
 
       setAnswer(data.answer);
 
@@ -416,29 +405,18 @@ function AIAssistant() {
     setError("");
 
     try {
-      const response = await fetch(
-        `${API_URL}/ai/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`
-          },
-          body: JSON.stringify({
-            question: "Confirm appointment",
-            thread_id: appointmentThreadId,
-            confirmed: true
-          })
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.detail || "Failed to confirm appointment"
-        );
-      }
+      const data = await apiFetch("/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`
+        },
+        body: JSON.stringify({
+          question: "Confirm appointment",
+          thread_id: appointmentThreadId,
+          confirmed: true
+        })
+      });
 
       setAnswer(data.answer);
 
