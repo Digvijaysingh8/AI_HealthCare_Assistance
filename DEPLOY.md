@@ -74,13 +74,14 @@ allowed.
 
 ## Known limitations
 
-- **The AI assistant exceeds the free plan's memory.** `/ai/chat` loads the
-  `all-MiniLM-L6-v2` embedding model (about 490 MB with PyTorch imported) and
-  then spawns an MCP server subprocess (~94 MB), so it needs roughly 600 MB.
-  Render's free and Starter plans both cap at **512 MB**, so the container is
-  OOM-killed and the proxy returns a 502.
+- **The AI assistant used to exceed the free plan's memory, and the symptom
+  looked like CORS.** `/ai/chat` used to load the `all-MiniLM-L6-v2` embedding
+  model (about 460 MB with PyTorch imported) and then spawn an MCP server
+  subprocess (~95 MB), so it needed roughly 720 MB against Render's **512 MB**
+  cap on free and Starter. The container was OOM-killed and the proxy returned
+  a 502.
 
-  The symptom is misleading: the browser reports
+  The symptom was misleading: the browser reported
 
   ```
   Access to fetch at '.../ai/chat' ... has been blocked by CORS policy:
@@ -94,9 +95,33 @@ allowed.
   OOM response carries `x-render-origin-server: Render`, while a genuine
   response from the app carries `uvicorn`.
 
-  The rest of the API is unaffected. To fix it properly, either move to the
-  **Standard** plan (2 GB — Starter is still 512 MB and will not help) or run
-  the embedding model on ONNX Runtime instead of PyTorch.
+  **This is fixed.** Knowledge-base retrieval is now lexical (BM25 over
+  tokenized chunks in `backend/app/rag/retriever.py`) instead of embedding
+  based. Measured RSS after the full app import is about **154 MB**, and RAG
+  warmup adds nothing measurable, because it only reads one small text file and
+  builds a few dictionaries. PyTorch, transformers, sentence-transformers, FAISS,
+  scikit-learn, scipy and numpy are no longer installed. See the concurrency
+  note below for the MCP subprocess budget.
+
+  Two details worth keeping if this is revisited. First, switching
+  sentence-transformers to its `backend="onnxruntime"` option would **not** have
+  been enough: the package imports torch at module level regardless of
+  backend. Second, the MCP server no longer exposes the knowledge base as a
+  tool, because the agent registers it in-process; a second copy in the
+  subprocess was pure overhead.
+
+  `data/healthcare_knowledge.txt` is the single source of truth. Editing it is
+  all that is needed; there is no index to rebuild. `backend/tests/test_retriever.py`
+  pins the retrieval behaviour, including that unrelated questions return
+  nothing so the assistant says it lacks the information.
+
+- **MCP subprocesses are capped at 3 concurrent users.** Each cached agent
+  holds a live subprocess (~99 MB). Three fits inside 512 MB alongside the
+  ~154 MB API process; four would not. The cache evicts the least recently used
+  *idle* user when full, so a user outside the cap pays connection setup (~1.5s)
+  on their next message, and a user mid-request is never evicted. Raise
+  `_MAX_CACHED_AGENTS` in `backend/app/agent/graph.py` only alongside a
+  measurement of the new plan's ceiling.
 
 - **The SQLite checkpoint file is ephemeral.** `appointment_checkpoints.sqlite`
   is written next to the app on local disk. On Render it is wiped on every
@@ -104,5 +129,5 @@ allowed.
   is unaffected — startup logs a warning if that file cannot be written.
 - **The free plan sleeps.** Cold starts make the first request take ~50s.
 - **Aiven connection pooling.** Each Render instance opens its own pool.
-- `tests/test_llm.py` cannot run on Windows here: Application Control blocks
-  an sklearn DLL. Unrelated to deployment.
+- `tests/test_llm.py` is a manual script, not a test. It calls Groq at import
+  time and needs `GROQ_API_KEY`; run it directly rather than through pytest.

@@ -16,10 +16,10 @@ router = APIRouter(
     tags=["AI Assistant"]
 )
 
-# The agent loads the embedding model and spawns an MCP subprocess on first
-# use, so a cold call is slow. Bounding it here means an over-long request
-# fails with a readable 504 that carries CORS headers, instead of being cut
-# off further out where the client only sees an opaque gateway failure.
+# A cold call spawns an MCP subprocess and calls the model, so it is slow.
+# Bounding it here means an over-long request fails with a readable 504 that
+# carries CORS headers, instead of being cut off further out where the client
+# only sees an opaque gateway failure.
 REQUEST_TIMEOUT_SECONDS = float(
     os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "55")
 )
@@ -50,8 +50,8 @@ async def chat(
             status_code=504,
             detail=(
                 "The assistant took too long to respond and was stopped. "
-                "This usually means the server ran out of memory or is "
-                "starting up. Please try again."
+                "This usually means the server is starting up or busy. "
+                "Please try again."
             )
         )
     except MemoryError:
@@ -61,7 +61,7 @@ async def chat(
             status_code=503,
             detail=(
                 "The assistant ran out of memory handling that question. "
-                "The server needs a larger instance."
+                "Please try again in a moment."
             )
         )
     except Exception:

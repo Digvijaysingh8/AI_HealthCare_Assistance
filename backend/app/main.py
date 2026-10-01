@@ -30,7 +30,12 @@ async def lifespan(app: FastAPI):
 
     create_db_and_tables()
 
-    print("Skipping RAG warmup to conserve memory.", flush=True)
+    # Retrieval scores pre-tokenized chunks in memory, so indexing the
+    # knowledge base here costs a few milliseconds. Doing it at startup keeps
+    # the first chat request from paying for it.
+    from app.agent.graph import warmup_rag
+
+    warmup_rag()
 
     # The checkpointer writes a SQLite file next to the app. If that location
     # is not writable (read-only or ephemeral container filesystem), let the

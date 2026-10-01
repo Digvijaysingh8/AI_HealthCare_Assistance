@@ -24,6 +24,11 @@ class AgentContext:
 
 backend_root = Path(__file__).resolve().parents[2]
 def warmup_rag():
+    """Load and index the knowledge base at startup.
+
+    Cheap enough to always run: retrieval scores pre-tokenized chunks against
+    the query, so this reads one small text file and builds a few dictionaries.
+    """
     start = time.perf_counter()
 
     from app.rag.retriever import retrieve_chunks
@@ -37,10 +42,19 @@ def warmup_rag():
         flush=True
     )
 
-# Keep one agent and MCP connection per authenticated user.
+# Keep one agent and MCP connection per authenticated user, bounded by
+# _MAX_CACHED_AGENTS. Each entry holds a live MCP subprocess (~99 MB measured),
+# and Render's free and Starter plans cap at 512 MB. Measured API process is
+# ~154 MB, so 3 subprocesses lands at ~450 MB and leaves headroom. A fourth
+# would be ~549 MB and risk an OOM kill, which presents to the browser as a
+# misleading CORS error.
+#
+# Raise this only alongside a measurement of the new plan's ceiling.
 _agent_cache = {}
 _agent_stacks = {}
 _agent_locks = {}
+_agent_last_used = {}
+_MAX_CACHED_AGENTS = 3
 
 
 SYSTEM_PROMPT = """
@@ -95,13 +109,64 @@ def get_user_lock(user_id: int):
     return _agent_locks[user_id]
 
 
+async def _evict_least_recent():
+    """Close and drop the least recently used idle agent.
+
+    Users whose lock is held are mid-request. Closing their subprocess would
+    break the request in flight, so they are not eligible and we fall through
+    to the next least recently used idle user.
+    """
+    idle = [
+        user_id
+        for user_id in _agent_last_used
+        if not _agent_locks[user_id].locked()
+    ]
+
+    if not idle:
+        print("No idle MCP connection to evict")
+        return
+
+    victim = min(idle, key=_agent_last_used.get)
+
+    stack = _agent_stacks.pop(victim)
+
+    _agent_cache.pop(victim, None)
+    _agent_last_used.pop(victim, None)
+    _agent_locks.pop(victim, None)
+
+    print(f"Evicting MCP connection for user {victim}")
+
+    try:
+        await stack.aclose()
+    except Exception as error:
+        print(f"Error closing evicted MCP connection: {error}")
+
+
 async def get_or_create_agent(user_id: int):
     lock = get_user_lock(user_id)
 
     async with lock:
         if user_id in _agent_cache:
             print(f"Reusing MCP connection for user {user_id}")
+            _agent_last_used[user_id] = time.monotonic()
             return _agent_cache[user_id]
+
+        # Free a slot before starting another subprocess, not after, so peak
+        # usage never exceeds the cap by one. If every cached user is mid
+        # request there is nothing safe to evict; exceeding the cap briefly is
+        # better than breaking an in-flight request, so stop trying rather than
+        # spin here.
+        while len(_agent_cache) >= _MAX_CACHED_AGENTS:
+            before = len(_agent_cache)
+
+            await _evict_least_recent()
+
+            if len(_agent_cache) == before:
+                print(
+                    f"Agent cache at {before} with all users busy; "
+                    "exceeding the cap for this request"
+                )
+                break
 
         print(f"Initializing MCP connection for user {user_id}")
         start_time = time.perf_counter()
@@ -140,9 +205,6 @@ async def get_or_create_agent(user_id: int):
             tools = []
 
             for mcp_tool in mcp_tools:
-                if mcp_tool.name == "search_healthcare_knowledge":
-                    continue
-
                 async def call_tool(_tool=mcp_tool, **kwargs):
                     result = await _tool.ainvoke(kwargs)
 
@@ -183,9 +245,9 @@ async def get_or_create_agent(user_id: int):
                         "Search the healthcare knowledge base for "
                         "information relevant to a healthcare question. "
                         "Use this tool for healthcare knowledge queries."
-                        ),
-                    )
+                    ),
                 )
+            )
             mcp_time = time.perf_counter() - mcp_start
 
             agent_start = time.perf_counter()
@@ -201,6 +263,7 @@ async def get_or_create_agent(user_id: int):
 
             _agent_cache[user_id] = agent
             _agent_stacks[user_id] = stack
+            _agent_last_used[user_id] = time.monotonic()
 
             print(
                 "MCP initialization:",
@@ -233,6 +296,7 @@ async def close_mcp_agents():
     _agent_cache.clear()
     _agent_stacks.clear()
     _agent_locks.clear()
+    _agent_last_used.clear()
 
     for stack in stacks:
         try:
@@ -282,7 +346,10 @@ async def run_agent(question: str, user_id: int):
 def search_healthcare_knowledge_local(question: str) -> str:
     from app.rag.retriever import retrieve_chunks
 
-    results = retrieve_chunks(question)
+    # top_k=2 gives the model a second section to rule out. One chunk per
+    # question keeps context small, and the knowledge base is short enough that
+    # the extra text is negligible.
+    results = retrieve_chunks(question, top_k=2)
 
     if not results:
         return "No relevant information found in the healthcare knowledge base."

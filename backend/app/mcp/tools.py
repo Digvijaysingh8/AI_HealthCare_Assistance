@@ -318,40 +318,12 @@ def get_available_slots(
 
         return json.dumps(slots)
     
-@mcp.tool(name="search_healthcare_knowledge")
-def search_healthcare_knowledge(question: str) -> list[str]:
-    """Search the healthcare knowledge base for relevant information."""
+# The healthcare knowledge base is deliberately NOT exposed as an MCP tool.
+# The agent registers search_healthcare_knowledge in-process instead (see
+# app/agent/graph.py), so an MCP copy would load a second, unused index into
+# this subprocess on every user. Keeping retrieval in the parent also means the
+# knowledge base is read from one place.
 
-    import sys
-    import time
-
-    start = time.perf_counter()
-
-    load_start = time.perf_counter()
-    from app.rag.retriever import retrieve_chunks
-    load_time = time.perf_counter() - load_start
-
-    search_start = time.perf_counter()
-    results = retrieve_chunks(question)
-    search_time = time.perf_counter() - search_start
-
-    print(
-        f"[RAG] Model, index and retriever loading: {load_time:.2f}s",
-        file=sys.stderr,
-        flush=True,
-    )
-    print(
-        f"[RAG] Embedding and retrieval: {search_time:.2f}s",
-        file=sys.stderr,
-        flush=True,
-    )
-    print(
-        f"[RAG] Total tool time: {time.perf_counter() - start:.2f}s",
-        file=sys.stderr,
-        flush=True,
-    )
-
-    return results
 @mcp.tool(name="search_doctors")
 def search_doctors(specialization: str) -> list[dict]:
     """Find doctors by medical specialization."""
